@@ -15,7 +15,7 @@ namespace conddb {
     virtual ~Exception() throw() {}
   };
 
-  void throwException( const std::string& message, const std::string& methodName );
+  [[ noreturn ]] void throwException( const std::string& message, const std::string& methodName );
 
 }
 
