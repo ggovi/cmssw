@@ -15,6 +15,7 @@
 
 #include "CondCore/CondDB/interface/Binary.h"
 #include "CondCore/CondDB/interface/Exception.h" 
+#include "CondCore/CondDB/interface/ObjectLoader.h"
 #include "CondCore/CondDB/interface/Utils.h" 
 //
 #include <sstream>
@@ -24,6 +25,7 @@
 #include <boost/shared_ptr.hpp>
 
 class TBufferFile;
+class TClass;
 
 namespace conddb {
 
@@ -59,8 +61,10 @@ namespace conddb {
     template <typename T>
     RootInputArchive& operator>>( T& instance );
   private:
+    friend class ObjectLoader<RootInputArchive>;
     // type and ptr of the object to restore
-    void read( const std::type_info& destinationType, void* destinationInstance);
+    void read( const TClass* destinationClass, void* destinationInstance ) const ;
+    void read( const std::type_info& destinationType, void* destinationInstance) const ;
   private:
     // copy of the input stream. is referenced by the TBufferFile.
     std::string m_buffer;
@@ -71,6 +75,23 @@ namespace conddb {
     read( typeid(T), &instance );
     return *this;
   }
+
+  template <> class ObjectLoader<RootInputArchive> {
+  public:
+    ObjectLoader( RootInputArchive& arch ):
+      m_archive( arch ){
+    }
+    template <typename T>
+    boost::shared_ptr<T> load( const std::string& objectTypeName ){
+      return boost::static_pointer_cast<T>( load( typeid(T), objectTypeName ) );
+    }
+
+    boost::shared_ptr<void> load( const std::type_info& destinationType, const std::string& objectTypeName );
+      
+  private:
+    
+    RootInputArchive& m_archive;
+  };
 
   // Generic streaming classes. Currently based on root. Could be a template class?
 
@@ -100,21 +121,23 @@ namespace conddb {
   public:
     InputStreamer( const std::string& payloadType, const Binary& payloadData );
 
-    template <typename T> boost::shared_ptr<T> read();
+    template <typename T> boost::shared_ptr<T> read() const;
 
   private:
     std::string m_objectType;
     std::stringbuf  m_buffer;
   }; 
 
-  template <typename T> inline boost::shared_ptr<T> InputStreamer::read(){
+  template <typename T> inline boost::shared_ptr<T> InputStreamer::read() const {
     // for the moment we fail if types don't match... later we will check for base types...
     if( demangledName( typeid(T) )!= m_objectType ) throwException(std::string("Type mismatch, target object is type \"")+m_objectType+"\"",
 								   "OutputStreamer::read" );
-    boost::shared_ptr<T> payload( new T );
+    boost::shared_ptr<T> payload;
     {
       RootInputArchive ia(m_buffer);
-      ia >> (*payload);
+      ObjectLoader<RootInputArchive> loader(ia);  
+      boost::shared_ptr<void> obj = loader.load<T>( m_objectType );
+      payload = boost::static_pointer_cast<T>( obj );
     }
     return payload;
   }

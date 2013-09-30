@@ -11,9 +11,9 @@
 
 namespace conddb {
 
+  static bool cintexInitialized = false;
   // initialize Cintex and load dictionary when required
   TClass* lookUpDictionary( const std::type_info& sourceType ){
-    static bool cintexInitialized = false;
     if (!cintexInitialized) {
       ROOT::Cintex::Cintex::Enable();
       cintexInitialized = true;
@@ -27,6 +27,46 @@ namespace conddb {
     }
     return rc;
   }
+
+  // initialize Cintex and load dictionary when required
+  TClass* lookUpDictionary( const std::string& typeName ){
+    if (!cintexInitialized) {
+      ROOT::Cintex::Cintex::Enable();
+      cintexInitialized = true;
+    }
+    TClass* rc = TClass::GetClass(typeName.c_str());
+    if( !rc ){
+      static std::string const prefix("LCGReflex/");
+      edmplugin::PluginCapabilities::get()->load(prefix + typeName);
+      rc = TClass::GetClass( typeName.c_str() );
+    }
+    return rc;
+  }
+
+  // functor to inject in the shared_ptr to enable the deallocation
+  class RootDeleter{
+
+    public:
+    RootDeleter( TClass* rclass ):
+      m_rclass( rclass ){
+    }
+
+    RootDeleter( const RootDeleter& rhs ):
+      m_rclass( rhs.m_rclass ){
+    }
+
+    ~RootDeleter(){}
+
+    void operator()( void* ptr ){
+      m_rclass->Destructor( ptr );
+    }
+    
+  private:
+    TClass* m_rclass;
+    
+  };
+
+
 }
 
 conddb::RootOutputArchive::RootOutputArchive( std::ostream& dest ):
@@ -53,10 +93,25 @@ conddb::RootInputArchive::~RootInputArchive(){
   delete m_streamer;
 }
 
-void conddb::RootInputArchive::read( const std::type_info& destinationType, void* destinationInstance){
+void conddb::RootInputArchive::read( const TClass* destinationClass, void* destinationInstance ) const {
+  m_streamer->StreamObject(destinationInstance, destinationClass);     
+}
+
+void conddb::RootInputArchive::read( const std::type_info& destinationType, void* destinationInstance) const {
   TClass* r_class = lookUpDictionary( destinationType );
   if (!r_class) throwException( "No ROOT class registered for \"" + demangledName(destinationType) +"\"","RootInputArchive::read");
-  m_streamer->StreamObject(destinationInstance, r_class);   
+  read( r_class, destinationInstance);
+}
+
+boost::shared_ptr<void> conddb::ObjectLoader<conddb::RootInputArchive>::load( const std::type_info& destinationType, 
+									      const std::string& objectTypeName ){
+  TClass* destClass = lookUpDictionary( destinationType );
+  TClass* objClass = lookUpDictionary( objectTypeName );
+  if( !objClass->InheritsFrom( destClass ) ) 
+    throwException( "Destination type and object type are unrelated.","ObjectLoader<RootInputArchive>::load" );
+  void* obj = objClass->New();
+  m_archive.read( destClass, obj );
+  return boost::shared_ptr<void>( obj, RootDeleter( destClass ) );
 }
 
 conddb::OutputStreamer::OutputStreamer():
