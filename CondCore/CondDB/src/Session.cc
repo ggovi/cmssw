@@ -162,6 +162,20 @@ namespace cond {
       m_session->iovSchema().tagMigrationTable().insert( sourceAccount, sourceTag, destTag, 
 						       boost::posix_time::microsec_clock::universal_time() );
     }
+
+    TransactionScope::TransactionScope( Transaction& transaction ):
+      m_transaction(transaction),m_status(false){
+    }
+
+    TransactionScope::~TransactionScope(){
+      if(!m_status && m_transaction.isActive() ) {
+	m_transaction.rollback();
+      }
+    }
+    
+    void TransactionScope::close(){
+      m_status = true;
+    }
     
   }
 }

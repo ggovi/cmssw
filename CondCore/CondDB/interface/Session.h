@@ -153,6 +153,20 @@ namespace cond {
       return deserialize<T>(  payloadType, payloadData, isOraSession() );
     }
 
+    class TransactionScope {
+    public:
+      explicit TransactionScope( Transaction& transaction );   
+      
+      ~TransactionScope();
+      
+      void close();
+    private:
+      Transaction& m_transaction;
+      bool m_status;
+      
+    };
+
+
   }
 }
 #endif
