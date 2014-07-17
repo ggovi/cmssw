@@ -236,6 +236,7 @@ namespace cond {
       **/
 
       IMPORT_PAYLOAD_CASE( PhysicsTools::Calibration::MVAComputerContainer )
+      IMPORT_PAYLOAD_CASE( Pedestals )
       IMPORT_PAYLOAD_CASE( PCaloGeometry )
       IMPORT_PAYLOAD_CASE( PGeometricDet )
       IMPORT_PAYLOAD_CASE( PGeometricDetExtra )
@@ -491,6 +492,7 @@ namespace cond {
     FETCH_PAYLOAD_CASE( lumi::LumiSectionData )
     FETCH_PAYLOAD_CASE( MixingModuleConfig )
     FETCH_PAYLOAD_CASE( MuScleFitDBobject )
+    FETCH_PAYLOAD_CASE( Pedestals )
     FETCH_PAYLOAD_CASE( PhysicsTools::Calibration::MVAComputerContainer )
     FETCH_PAYLOAD_CASE( PCaloGeometry )
     FETCH_PAYLOAD_CASE( PGeometricDet )

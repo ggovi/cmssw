@@ -23,12 +23,13 @@ cond::ImportUtilities::ImportUtilities():Utilities("conddb_import"){
   addConnectOption("fromConnect","f","source connection string (required)");
   addConnectOption("connect","c","target connection string (required)");
   addAuthenticationOptions();
-  addOption<std::string>("inputTag","i","source tag (optional - default=tag)");
-  addOption<std::string>("tag","t","destination tag (required)");
+  addOption<std::string>("inputTag","i","source tag");
+  addOption<std::string>("tag","t","destination tag");
   addOption<cond::Time_t>("begin","b","lower bound of interval to import (optional, default=1)");
   addOption<cond::Time_t>("end","e","upper bound of interval to import (optional, default=infinity)");
   addOption<std::string>("oraDestAccount","A","ora DB destination account (optional, to be used with -T)");
   addOption<std::string>("oraDestTag","T","ora DB destination tag (optional, to be used with -A)");
+  addOption<bool>("v2","2","use conddb v2 as a default destination format (optional)");
 }
 
 cond::ImportUtilities::~ImportUtilities(){
@@ -40,15 +41,21 @@ int cond::ImportUtilities::execute(){
   std::string destConnect = getOptionValue<std::string>("connect" );
   std::string sourceConnect = getOptionValue<std::string>("fromConnect");
 
-  std::string inputTag = getOptionValue<std::string>("inputTag");;
+  std::string inputTag("");
   std::string tag(""); 
   std::string oraConn("");
   std::string oraTag("");
   if( hasOptionValue("tag")) {
     tag = getOptionValue<std::string>("tag");
+    if( hasOptionValue("inputTag") ){
+      inputTag = getOptionValue<std::string>("inputTag");
+    } else {
+      inputTag = tag;
+    }
   } else {
     if( hasOptionValue("oraDestTag") ){
       oraTag = getOptionValue<std::string>("oraDestTag");
+      inputTag = getOptionValue<std::string>("inputTag");
     } else throwException("The destination tag is missing and can't be resolved.","ImportUtilities::execute");; 
     oraConn = getOptionValue<std::string>("oraDestAccount");
   }
@@ -68,7 +75,9 @@ int cond::ImportUtilities::execute(){
   persistency::Session sourceSession = connPool.createSession( sourceConnect );
 
   std::cout <<"# Opening session on destination database..."<<std::endl;
-  persistency::Session destSession = connPool.createSession( destConnect, true );
+  BackendType backType=DEFAULT_DB;
+  if( hasOptionValue("v2") ) backType = COND_DB;
+  persistency::Session destSession = connPool.createSession( destConnect, true, backType );
 
   bool newTag = false;
   destSession.transaction().start( true );

@@ -25,7 +25,7 @@ int run( const std::string& connectionString ){
     std::cout <<"# Connecting with db in "<<connectionString<<std::endl;
     ConnectionPool connPool;
     connPool.setMessageVerbosity( coral::Debug );
-    Session session = connPool.createSession( connectionString, true );
+    Session session = connPool.createSession( connectionString, true, cond::COND_DB );
     session.transaction().start( false );
     MyTestData d0( 17 );
     MyTestData d1( 999 );

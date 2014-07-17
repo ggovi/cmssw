@@ -21,9 +21,10 @@ namespace cond {
       
       class Table : public IGTTable {
       public:
-	explicit Table( coral::ISchema& schema );
+	explicit Table( coral::ISessionProxy& session );
 	virtual ~Table(){}
 	bool exists();
+	void create();
 	bool select( const std::string& name);
 	bool select( const std::string& name, cond::Time_t& validity, boost::posix_time::ptime& snapshotTime );
 	bool select( const std::string& name, cond::Time_t& validity, std::string& description, 
@@ -33,7 +34,7 @@ namespace cond {
 	void update( const std::string& name, cond::Time_t validity, const std::string& description, const std::string& release, 
 		     const boost::posix_time::ptime& snapshotTime, const boost::posix_time::ptime& insertionTime );
       private:
-	coral::ISchema& m_schema;
+	coral::ISessionProxy& m_session;
       };
     }
     
@@ -50,24 +51,26 @@ namespace cond {
       
       class Table : public IGTMapTable {
       public:
-	explicit Table( coral::ISchema& schema );
+	explicit Table( coral::ISessionProxy& session );
 	virtual ~Table(){}
 	bool exists();
+	void create();
 	bool select( const std::string& gtName, std::vector<std::tuple<std::string,std::string,std::string> >& tags );
 	bool select( const std::string& gtName, const std::string& preFix, const std::string& postFix,
 		     std::vector<std::tuple<std::string,std::string,std::string> >& tags );
 	void insert( const std::string& gtName, const std::vector<std::tuple<std::string,std::string,std::string> >& tags );
       private:
-	coral::ISchema& m_schema;
+	coral::ISessionProxy& m_session;;
       };
     }
     
     class GTSchema : public IGTSchema {
     public: 
-      explicit GTSchema( coral::ISchema& schema );
+      explicit GTSchema( coral::ISessionProxy& session );
       virtual ~GTSchema(){}
       bool exists();
-      GLOBAL_TAG::Table& gtTable();
+      bool create();
+     GLOBAL_TAG::Table& gtTable();
       GLOBAL_TAG_MAP::Table& gtMapTable();
     private:
       GLOBAL_TAG::Table m_gtTable;

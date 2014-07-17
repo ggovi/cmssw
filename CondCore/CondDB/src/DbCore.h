@@ -26,6 +26,7 @@
 #include "RelationalAccess/ICursor.h"
 #include "RelationalAccess/ISchema.h"
 #include "RelationalAccess/ISessionProxy.h"
+#include "RelationalAccess/ISessionProperties.h"
 #include "RelationalAccess/IQuery.h"
 #include "RelationalAccess/TableDescription.h"
 #include "RelationalAccess/ITable.h"
@@ -77,6 +78,17 @@ namespace cond {
 
   namespace persistency {
 
+    namespace {
+      bool isSQLightSession( coral::ISessionProxy& session ){
+	return session.properties().flavorName() == "SQLite";
+      }
+      std::string time_to_string( const boost::posix_time::ptime& time ){
+	std::string iso = boost::posix_time::to_iso_extended_string( time );
+	// replacing the 'T' with space and the ',' with '.'
+	return iso.replace( 10,1," ").replace( 19,1,".");
+      }
+    }
+
   // helper function to asses the equality of the underlying types, regardless if they are references and their constness
   template <typename T, typename P>
   inline void static_assert_is_same_decayed() {
@@ -85,46 +97,52 @@ namespace cond {
 
   // functions ( specilized for specific types ) for adding data in AttributeList buffers
   namespace {
-    template<typename T> void f_add_attribute( coral::AttributeList& data, const std::string& attributeName, const T& param, bool init=true ){
+    template<typename T> void f_add_attribute( bool forSqlite, coral::AttributeList& data, const std::string& attributeName, const T& param, bool init=true ){
       if(init) data.extend<T>( attributeName );
       data[ attributeName ].data<T>() = param;
     }
 
-    template<> void f_add_attribute( coral::AttributeList& data, const std::string& attributeName, const cond::Binary& param, bool init ){
+    template<> void f_add_attribute( bool, coral::AttributeList& data, const std::string& attributeName, const cond::Binary& param, bool init ){
       if(init) data.extend<coral::Blob>( attributeName );
       data[ attributeName ].bind( param.get() );
     }
 
-    template<> void f_add_attribute( coral::AttributeList& data, const std::string& attributeName, const boost::posix_time::ptime& param, bool init ){
-      if(init) data.extend<coral::TimeStamp>( attributeName );
-      data[ attributeName ].data<coral::TimeStamp>() = coral::TimeStamp(param);
+    template<> void f_add_attribute( bool forSqlite, coral::AttributeList& data, const std::string& attributeName, const boost::posix_time::ptime& param, bool init ){
+      if( !forSqlite){
+	if(init) data.extend<coral::TimeStamp>( attributeName );
+	data[ attributeName ].data<coral::TimeStamp>() = coral::TimeStamp(param);
+      } else {
+	if(init) data.extend<std::string>( attributeName );
+	data[ attributeName ].data<std::string>() = time_to_string(param);
+      }
     }
 
-    template<> void f_add_attribute( coral::AttributeList& data, const std::string& attributeName, const cond::TimeType& param, bool init ){
+    template<> void f_add_attribute( bool, coral::AttributeList& data, const std::string& attributeName, const cond::TimeType& param, bool init ){
       if(init) data.extend<std::string>( attributeName );
       data[ attributeName ].data<std::string>() = cond::time::timeTypeName( param );
     }
 
-    template<> void f_add_attribute( coral::AttributeList& data, const std::string& attributeName, const cond::SynchronizationType& param, bool init ){
+    template<> void f_add_attribute( bool, coral::AttributeList& data, const std::string& attributeName, const cond::SynchronizationType& param, bool init ){
       if(init) data.extend<std::string>( attributeName );
       data[ attributeName ].data<std::string>() = synchronizationTypeNames( param );
     }
 
     // function for adding into an AttributeList buffer data for a specified column. Performs type checking.
-    template<typename Column, typename P> void f_add_column_data( coral::AttributeList& data, const P& param, bool init=true ){
+    template<typename Column, typename P> void f_add_column_data( bool forSqlite, coral::AttributeList& data, const P& param, bool init=true ){
       static_assert_is_same_decayed<typename Column::type,P>();
-      f_add_attribute( data, Column::name, param, init );
+      f_add_attribute( forSqlite, data, Column::name, param, init );
     }
 
     // function for adding into an AttributeList buffer data for a specified condition. Performs type checking.
-    template<typename Column, typename P> void f_add_condition_data( coral::AttributeList& data, std::string& whereClause, const P& value, const std::string condition = "="){
+    template<typename Column, typename P> void f_add_condition_data( bool forSqlite, coral::AttributeList& data, std::string& whereClause, const P& value, 
+								     const std::string condition = "="){
       static_assert_is_same_decayed<typename Column::type,P>();
       std::stringstream varId;
       unsigned int id = data.size();
       varId << Column::name <<"_"<<id;
       if( !whereClause.empty() ) whereClause += " AND ";
       whereClause += Column::fullyQualifiedName() + " " + condition + " :" + varId.str() + " ";
-      f_add_attribute( data, varId.str(), value );
+      f_add_attribute( forSqlite, data, varId.str(), value );
     }
 
     // function for appending conditions to a where clause
@@ -142,7 +160,7 @@ namespace cond {
 
     template<typename Params, int n, typename T1, typename... Ts>    
     void _set(const Params & params, bool init=true) {
-      f_add_column_data<T1>( m_data, std::get<n>( params ), init );
+      f_add_column_data<T1>( m_forSQLite, m_data, std::get<n>( params ), init );
       _set<Params, n+1, Ts...>(params, init);
     }
 
@@ -151,13 +169,15 @@ namespace cond {
     }
 
   public:
-    RowBuffer():
-      m_data(){
+    explicit RowBuffer( coral::ISessionProxy& session ):
+      m_data(),
+      m_forSQLite( isSQLightSession( session ) ){
     }
 
     template<typename P>
-    explicit RowBuffer(const P & params):
-      m_data() {
+    RowBuffer( coral::ISessionProxy& session, const P & params ):
+      m_data(),
+      m_forSQLite( isSQLightSession( session ) ){
       _set<P, 0, Columns...>(params);
     }
 
@@ -174,6 +194,7 @@ namespace cond {
 
   protected:
     coral::AttributeList m_data;
+    bool m_forSQLite;
   };
 
   template<typename T> struct AttributeTypeName {
@@ -202,9 +223,32 @@ namespace cond {
     }
   };
 
-  template<typename T> void f_add_column_description( coral::TableDescription& table, const std::string& columnName, size_t size = 0, bool notNull=true ){
-    table.insertColumn( columnName, AttributeTypeName<T>()(), size );
-    if( notNull ) table.setNotNullConstraint( columnName );
+  namespace {
+    template<typename T> std::string attribute_type_name( bool ){
+      return coral::AttributeSpecification::typeNameForType<T>();
+    }
+    template<> std::string attribute_type_name<cond::Binary>( bool ){
+      return coral::AttributeSpecification::typeNameForType<coral::Blob>();
+    }
+    template<> std::string attribute_type_name<boost::posix_time::ptime>( bool isSQLiteSession ){
+      if( !isSQLiteSession ){
+	return coral::AttributeSpecification::typeNameForType<coral::TimeStamp>();
+      } else {
+	return coral::AttributeSpecification::typeNameForType<std::string>();
+      }
+    }
+    template<> std::string attribute_type_name<cond::TimeType>( bool ){
+      return coral::AttributeSpecification::typeNameForType<std::string>();
+    }
+    template<> std::string attribute_type_name<cond::SynchronizationType>( bool ){
+      return coral::AttributeSpecification::typeNameForType<std::string>();
+    }
+
+    template<typename T> void f_add_column_description( bool isSQLiteSession, coral::TableDescription& table, const std::string& columnName, size_t size = 0, bool notNull=true ){
+      //table.insertColumn( columnName, AttributeTypeName<T>()(), size );
+      table.insertColumn( columnName, attribute_type_name<T>( isSQLiteSession ), size );
+      if( notNull ) table.setNotNullConstraint( columnName );
+    }
   }
     
   template <typename T, typename Arg1> constexpr bool is_same_any() {
@@ -223,7 +267,7 @@ namespace cond {
 
     template<int n,typename Arg1, typename... Args> void addColumn(  coral::TableDescription& tableDescription  ){ 
       std::string columnName( Arg1::name );
-      f_add_column_description<typename Arg1::type>( m_description, columnName, Arg1::size );
+      f_add_column_description<typename Arg1::type>( false, m_description, columnName, Arg1::size );
       addColumn<n+1, Args...>( m_description );
     }
     
@@ -308,6 +352,29 @@ namespace cond {
     return ret;
   } };
 
+  namespace {
+    template <typename T> T get_from_row( bool, const coral::AttributeList& row, const std::string& fullyQualifiedName ){
+      return row[ fullyQualifiedName ].data<T>();
+    }
+    template <> cond::Binary get_from_row<cond::Binary>( bool, const coral::AttributeList& row, const std::string& fullyQualifiedName ){
+      return cond::Binary(row[ fullyQualifiedName ].data<coral::Blob>());
+    }
+    template <> boost::posix_time::ptime get_from_row<boost::posix_time::ptime>( bool isSQLiteSession, const coral::AttributeList& row, const std::string& fullyQualifiedName ){
+      if( ! isSQLiteSession ){
+	return row[ fullyQualifiedName ].data<coral::TimeStamp>().time();
+      } else {
+	return boost::posix_time::time_from_string( row[ fullyQualifiedName ].data<std::string>() );
+      }
+    }
+    template <> cond::TimeType get_from_row<cond::TimeType>( bool, const coral::AttributeList& row, const std::string& fullyQualifiedName ){
+      return cond::time::timeTypeFromName( row[ fullyQualifiedName ].data<std::string>() );
+    }
+    template <> cond::SynchronizationType get_from_row<cond::SynchronizationType>( bool, const coral::AttributeList& row, const std::string& fullyQualifiedName ){
+      return cond::synchronizationTypeFromName( row[ fullyQualifiedName ].data<std::string>() );
+    }
+  }
+
+
   template<typename... Types> class Query;
 
   template<typename... Types> class QueryIterator: public std::iterator<std::input_iterator_tag,std::tuple<Types...> > {
@@ -332,7 +399,8 @@ namespace cond {
     }
 
     template <typename T> typename T::type get() const {
-      return GetFromRow<typename T::type>()( *m_currentRow, T::fullyQualifiedName() );
+      //return GetFromRow<typename T::type>()( *m_currentRow, T::fullyQualifiedName() );
+      return get_from_row<typename T::type>( m_query->m_isSQLiteSession, *m_currentRow, T::fullyQualifiedName() );
     }
     
     auto operator*() -> decltype( std::make_tuple( this->get<Types>()... ) ) {
@@ -393,11 +461,19 @@ namespace cond {
     query.defineOutputType( fullyQualifiedName, coral::AttributeSpecification::typeNameForType<std::string>() );      
   } };
 
+  namespace {
+    template<typename T>  void define_query_output( bool isSQLiteSession, coral::IQuery& query, const std::string& fullyQualifiedName ){
+      query.addToOutputList( fullyQualifiedName );
+      query.defineOutputType( fullyQualifiedName, attribute_type_name<T>( isSQLiteSession ) );      
+    }
+  }
 
   template<typename... Types> class Query  {
+    friend class QueryIterator<Types...>;
     public:
-    Query( const coral::ISchema& schema, bool distinct=false ):
-      m_coralQuery( schema.newQuery() ),
+    Query( coral::ISessionProxy& session, bool distinct=false ):
+      m_coralQuery( session.nominalSchema().newQuery() ),
+      m_isSQLiteSession( isSQLightSession( session ) ),
       m_whereData(),
       m_whereClause(""),
       m_tables(){
@@ -421,13 +497,14 @@ namespace cond {
     template<int n, typename Arg1, typename... Args>
     void _Query() {
       addTable<Arg1>();
-      DefineQueryOutput<typename Arg1::type>::make( *m_coralQuery, Arg1::fullyQualifiedName() );
+      //DefineQueryOutput<typename Arg1::type>::make( *m_coralQuery, Arg1::fullyQualifiedName() );
+      define_query_output<typename Arg1::type>( m_isSQLiteSession, *m_coralQuery, Arg1::fullyQualifiedName() );
       _Query<n+1, Args...>();
     }
 
     template<typename C, typename T> void addCondition( const T& value, const std::string condition = "="){
       addTable<C>();
-      f_add_condition_data<C>( m_whereData, m_whereClause, value, condition );       
+      f_add_condition_data<C>( m_isSQLiteSession, m_whereData, m_whereClause, value, condition );       
     }
   
     template<typename C1, typename C2> void addCondition( const std::string condition = "="){
@@ -476,6 +553,7 @@ namespace cond {
 
     private:
     std::unique_ptr<coral::IQuery> m_coralQuery;
+    bool m_isSQLiteSession; 
     coral::ICursor* m_cursor = nullptr;
     size_t m_retrievedRows = 0;
     coral::AttributeList m_whereData;
@@ -487,7 +565,7 @@ namespace cond {
   private:
     template<typename Params, int n, typename C1, typename... Cs>
     void _set(const Params & params) {
-      f_add_column_data<C1>( m_data, std::get<n>( params ) ); 
+      f_add_column_data<C1>( m_forSQLite, m_data, std::get<n>( params ) ); 
       if( !m_setClause.empty() ) m_setClause += ", ";
       m_setClause += std::string(C1::name) + " = :" + std::string(C1::name);
       _set<Params, n+1, Cs...>(params);
@@ -499,10 +577,11 @@ namespace cond {
 
 
   public:
-    UpdateBuffer():
+    explicit UpdateBuffer( coral::ISessionProxy& session ):
       m_data(),
       m_setClause(""),
-      m_whereClause(""){
+      m_whereClause(""),
+      m_forSQLite( isSQLightSession( session ) ){
     }
 
     template <typename... Columns, typename Params> void setColumnData( const Params& params ){
@@ -515,7 +594,7 @@ namespace cond {
     }
 
     template <typename Column, typename P> void addWhereCondition( const P& param, const std::string condition = "=" ){
-      f_add_condition_data<Column>( m_data, m_whereClause, param, condition );
+      f_add_condition_data<Column>( m_forSQLite, m_data, m_whereClause, param, condition );
     }
 
     template <typename Column1, typename Column2> void addWhereCondition( const std::string condition = "=" ){
@@ -538,22 +617,24 @@ namespace cond {
     coral::AttributeList m_data;
     std::string m_setClause;
     std::string m_whereClause;
+    bool m_forSQLite;
   };
 
   class DeleteBuffer {
 
   public:
-    DeleteBuffer():
+    explicit DeleteBuffer( coral::ISessionProxy& session ):
       m_data(),
-      m_whereClause(""){
+      m_whereClause(""),
+      m_forSQLite( isSQLightSession( session ) ) {
     }
 
     template <typename Column, typename P> void addWhereCondition( const P& param, const std::string condition = "=" ){
-      f_add_condition_data<Column>( m_data, m_whereClause, param, condition );
+      f_add_condition_data<Column>( m_forSQLite, m_data, m_whereClause, param, condition );
     }
 
     template <typename Column1, typename Column2> void addWhereCondition( const std::string condition = "=" ){
-      f_add_condition<Column1,Column2>( m_whereClause, condition );
+      f_add_condition<Column1,Column2>( m_forSQLite, m_whereClause, condition );
     }
 
     const coral::AttributeList& get() const {
@@ -567,15 +648,16 @@ namespace cond {
   private:
     coral::AttributeList m_data;
     std::string m_whereClause;
+    bool m_forSQLite;
   };
 
   template <typename... Types>  class BulkInserter {
   public:
     static constexpr size_t cacheSize = 1000;
-    BulkInserter( coral::ISchema& schema, const char* tableName ):
-      m_schema( schema ),
+    BulkInserter( coral::ISessionProxy& session, const char* tableName ):
+      m_session( session ),
       m_tableName( tableName ),
-      m_buffer(),
+      m_buffer( session ),
       m_coralInserter(){
       //fix me: maybe with 
       //m_coralInserter.reset(  schema.tableHandle( std::string(tableName ) ).dataEditor().bulkInsert( m_buffer.get(), cacheSize ) );
@@ -583,7 +665,7 @@ namespace cond {
 
     template <typename P> void insert( const P& params ){
       m_buffer.set( params );
-      if( !m_coralInserter.get() ) m_coralInserter.reset(  m_schema.tableHandle( m_tableName ).dataEditor().bulkInsert( m_buffer.get(), cacheSize ) );
+      if( !m_coralInserter.get() ) m_coralInserter.reset(  m_session.nominalSchema().tableHandle( m_tableName ).dataEditor().bulkInsert( m_buffer.get(), cacheSize ) );
       m_coralInserter->processNextIteration(); 
     }
 
@@ -592,7 +674,7 @@ namespace cond {
     }
   private:
     // fixme
-    coral::ISchema& m_schema;
+    coral::ISessionProxy& m_session;
     std::string m_tableName;
     //
     RowBuffer<Types...> m_buffer;
@@ -602,18 +684,18 @@ namespace cond {
   namespace {
 
 
-    inline bool existsTable( coral::ISchema& schema, const char* tableName ){
-      return schema.existsTable( std::string( tableName ) );
+    inline bool existsTable( coral::ISessionProxy& session, const char* tableName ){
+      return session.nominalSchema().existsTable( std::string( tableName ) );
     }
 
-    inline void createTable( coral::ISchema& schema, const coral::TableDescription& descr ){
-      schema.createTable( descr );
+    inline void createTable( coral::ISessionProxy& session, const coral::TableDescription& descr ){
+      session.nominalSchema().createTable( descr );
     }
 
-    inline bool insertInTable( coral::ISchema& schema, const char* tableName, const coral::AttributeList& row, bool failOnDuplicate=true  ){
+    inline bool insertInTable( coral::ISessionProxy& session, const char* tableName, const coral::AttributeList& row, bool failOnDuplicate=true  ){
       bool ret = false;
       try{
-       schema.tableHandle( std::string(tableName ) ).dataEditor().insertRow( row );
+       session.nominalSchema().tableHandle( std::string(tableName ) ).dataEditor().insertRow( row );
        ret = true;
       } catch ( const coral::DuplicateEntryInUniqueKeyException& ){
 	if( failOnDuplicate ) throw; 
@@ -621,12 +703,12 @@ namespace cond {
       return ret;
     }
 
-    inline void updateTable( coral::ISchema& schema, const char* tableName, const UpdateBuffer& data ){
-      schema.tableHandle( std::string(tableName ) ).dataEditor().updateRows( data.setClause(), data.whereClause(), data.get() );
+    inline void updateTable( coral::ISessionProxy& session, const char* tableName, const UpdateBuffer& data ){
+      session.nominalSchema().tableHandle( std::string(tableName ) ).dataEditor().updateRows( data.setClause(), data.whereClause(), data.get() );
     }
 
-    inline void deleteFromTable( coral::ISchema& schema, const char* tableName, const DeleteBuffer& data ){
-      schema.tableHandle( std::string(tableName ) ).dataEditor().deleteRows( data.whereClause(), data.get() );
+    inline void deleteFromTable( coral::ISessionProxy& session, const char* tableName, const DeleteBuffer& data ){
+      session.nominalSchema().tableHandle( std::string(tableName ) ).dataEditor().deleteRows( data.whereClause(), data.get() );
     }
   }
 

@@ -3,6 +3,7 @@
 #include "CondCore/DBCommon/interface/DbTransaction.h"
 #include "CondCore/DBCommon/interface/Exception.h"
 #include "CondCore/DBCommon/interface/Auth.h"
+#include "CondCore/ORA/interface/ConnectionPool.h"
 
 #include "CondCore/CondDB/interface/ConnectionPool.h"
 #include "CondCore/CondDB/interface/Session.h"
@@ -155,7 +156,7 @@ bool cond::MigrateGTUtilities::getGTList( const std::string& gt,
   GT::tname = gtTable;
   TAGINV::tname = "TAGINVENTORY_TABLE";
 
-  persistency::Query< TAGINV::tagname, TAGINV::objectname, TAGINV::recordname, TAGINV::labelname, TAGINV::pfn > q( schema );
+  persistency::Query< TAGINV::tagname, TAGINV::objectname, TAGINV::recordname, TAGINV::labelname, TAGINV::pfn > q( gtSession.storage().storageAccessSession().get() );
   q.addCondition<GT::tagid, TAGINV::tagid>();
   q.addOrderClause<TAGINV::tagname>();
   for ( auto row : q ) {

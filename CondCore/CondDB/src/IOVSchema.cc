@@ -32,12 +32,12 @@ namespace cond {
       return tmp;                                                                                                                                    
     }
 
-    TAG::Table::Table( coral::ISchema& schema ):
-      m_schema( schema ){
+    TAG::Table::Table( coral::ISessionProxy& session ):
+      m_session( session ){
     }
 
     bool TAG::Table::Table::exists(){
-      return existsTable( m_schema, tname );
+      return existsTable( m_session, tname );
     }
    
     void TAG::Table::create(){
@@ -47,11 +47,11 @@ namespace cond {
       }
       TableDescription< NAME, TIME_TYPE, OBJECT_TYPE, SYNCHRONIZATION, END_OF_VALIDITY, DESCRIPTION, LAST_VALIDATED_TIME, INSERTION_TIME, MODIFICATION_TIME > descr( tname );
       descr.setPrimaryKey<NAME>();
-      createTable( m_schema, descr.get() );
+      createTable( m_session, descr.get() );
     }
     
     bool TAG::Table::select( const std::string& name ){
-      Query< NAME > q( m_schema );
+      Query< NAME > q( m_session );
       q.addCondition<NAME>( name );
       for ( auto row : q ) {}
       
@@ -65,7 +65,7 @@ namespace cond {
 			     cond::Time_t& endOfValidity,
 			     std::string& description, 
 			     cond::Time_t&  lastValidatedTime ){
-      Query< TIME_TYPE, OBJECT_TYPE, SYNCHRONIZATION, END_OF_VALIDITY, DESCRIPTION, LAST_VALIDATED_TIME > q( m_schema );
+      Query< TIME_TYPE, OBJECT_TYPE, SYNCHRONIZATION, END_OF_VALIDITY, DESCRIPTION, LAST_VALIDATED_TIME > q( m_session );
       q.addCondition<NAME>( name );
       for ( auto row : q ) std::tie( timeType, objectType, synchronizationType, endOfValidity, description, lastValidatedTime ) = row;
       
@@ -76,7 +76,7 @@ namespace cond {
 				  std::string& description, 
 				  boost::posix_time::ptime& insertionTime, 
 				  boost::posix_time::ptime& modificationTime ){
-      Query< DESCRIPTION, INSERTION_TIME, MODIFICATION_TIME > q( m_schema );
+      Query< DESCRIPTION, INSERTION_TIME, MODIFICATION_TIME > q( m_session );
       q.addCondition<NAME>( name );
       for ( auto row : q ) std::tie( description, insertionTime, modificationTime ) = row;
       return q.retrievedRows();
@@ -91,8 +91,8 @@ namespace cond {
 			     cond::Time_t lastValidatedTime, 
 			     const boost::posix_time::ptime& insertionTime ){
       RowBuffer< NAME, TIME_TYPE, OBJECT_TYPE, SYNCHRONIZATION, END_OF_VALIDITY, DESCRIPTION, LAST_VALIDATED_TIME, INSERTION_TIME, MODIFICATION_TIME > 
-	dataToInsert( std::tie( name, timeType, objectType, synchronizationType, endOfValidity, description, lastValidatedTime, insertionTime, insertionTime ) );
-      insertInTable( m_schema, tname, dataToInsert.get() );
+	dataToInsert( m_session, std::tie( name, timeType, objectType, synchronizationType, endOfValidity, description, lastValidatedTime, insertionTime, insertionTime ) );
+      insertInTable( m_session, tname, dataToInsert.get() );
     }
     
     void TAG::Table::update( const std::string& name, 
@@ -100,27 +100,27 @@ namespace cond {
 		      const std::string& description, 
 		      cond::Time_t lastValidatedTime,
 		      const boost::posix_time::ptime& updateTime ){
-      UpdateBuffer buffer;
+      UpdateBuffer buffer( m_session );
       buffer.setColumnData< END_OF_VALIDITY, DESCRIPTION, LAST_VALIDATED_TIME, MODIFICATION_TIME >( std::tie( endOfValidity, description, lastValidatedTime, updateTime  ) );
       buffer.addWhereCondition<NAME>( name );
-      updateTable( m_schema, tname, buffer );  
+      updateTable( m_session, tname, buffer );  
     }
     
     void TAG::Table::updateValidity( const std::string& name, 
 				     cond::Time_t lastValidatedTime, 
 				     const boost::posix_time::ptime& updateTime ){
-      UpdateBuffer buffer;
+      UpdateBuffer buffer( m_session );
       buffer.setColumnData< LAST_VALIDATED_TIME, MODIFICATION_TIME >( std::tie( lastValidatedTime, updateTime  ) );
       buffer.addWhereCondition<NAME>( name );
-      updateTable( m_schema, tname, buffer );
+      updateTable( m_session, tname, buffer );
     }
     
-    IOV::Table::Table( coral::ISchema& schema ):
-      m_schema( schema ){
+    IOV::Table::Table( coral::ISessionProxy& session ):
+      m_session( session ){
     }
 
     bool IOV::Table::exists(){
-      return existsTable( m_schema, tname );
+      return existsTable( m_session, tname );
     }
     
     void IOV::Table::create(){
@@ -133,11 +133,11 @@ namespace cond {
       descr.setPrimaryKey< TAG_NAME, SINCE, INSERTION_TIME >();
       descr.setForeignKey< TAG_NAME, TAG::NAME >( "TAG_NAME_FK" );
       descr.setForeignKey< PAYLOAD_HASH, PAYLOAD::HASH >( "PAYLOAD_HASH_FK" );
-      createTable( m_schema, descr.get() );
+      createTable( m_session, descr.get() );
     }
     
     size_t IOV::Table::selectGroups( const std::string& tag, std::vector<cond::Time_t>& groups ){
-      Query< SINCE_GROUP > q( m_schema, true );
+      Query< SINCE_GROUP > q( m_session, true );
       q.addCondition<TAG_NAME>( tag );
       q.addOrderClause<SINCE_GROUP>();
       for( auto row : q ){
@@ -147,7 +147,7 @@ namespace cond {
     }
     
     size_t IOV::Table::selectSnapshotGroups( const std::string& tag, const boost::posix_time::ptime& snapshotTime, std::vector<cond::Time_t>& groups ){
-      Query< SINCE_GROUP > q( m_schema, true );
+      Query< SINCE_GROUP > q( m_session, true );
       q.addCondition<TAG_NAME>( tag );
       q.addCondition<INSERTION_TIME>( snapshotTime,"<=" );
       q.addOrderClause<SINCE_GROUP>();
@@ -159,7 +159,7 @@ namespace cond {
     
     size_t IOV::Table::selectLatestByGroup( const std::string& tag, cond::Time_t lowerSinceGroup, cond::Time_t upperSinceGroup , 
 					    std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs ){
-      Query< SINCE, PAYLOAD_HASH > q( m_schema );
+      Query< SINCE, PAYLOAD_HASH > q( m_session );
       q.addCondition<TAG_NAME>( tag );
       if( lowerSinceGroup > 0 ) q.addCondition<SINCE>( lowerSinceGroup, ">=" );
       if( upperSinceGroup < cond::time::MAX_VAL ) q.addCondition<SINCE>( upperSinceGroup, "<" );
@@ -177,7 +177,7 @@ namespace cond {
     size_t IOV::Table::selectSnapshotByGroup( const std::string& tag, cond::Time_t lowerSinceGroup, cond::Time_t upperSinceGroup, 
 					      const boost::posix_time::ptime& snapshotTime, 
 					      std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs ){
-      Query< SINCE, PAYLOAD_HASH > q( m_schema );
+      Query< SINCE, PAYLOAD_HASH > q( m_session );
       q.addCondition<TAG_NAME>( tag );
       if( lowerSinceGroup > 0 ) q.addCondition<SINCE>( lowerSinceGroup, ">=" );
       if( upperSinceGroup < cond::time::MAX_VAL ) q.addCondition<SINCE>( upperSinceGroup, "<" );
@@ -195,7 +195,7 @@ namespace cond {
     
     size_t IOV::Table::selectLatest( const std::string& tag, 
 				     std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs ){
-      Query< SINCE, PAYLOAD_HASH > q( m_schema );
+      Query< SINCE, PAYLOAD_HASH > q( m_session );
       q.addCondition<TAG_NAME>( tag );
       q.addOrderClause<SINCE>();
       q.addOrderClause<INSERTION_TIME>( false );
@@ -209,7 +209,7 @@ namespace cond {
     }
 
     bool IOV::Table::getLastIov( const std::string& tag, cond::Time_t& since, cond::Hash& hash ){
-      Query< SINCE, PAYLOAD_HASH > q( m_schema );
+      Query< SINCE, PAYLOAD_HASH > q( m_session );
       q.addCondition<TAG_NAME>( tag );
       q.addOrderClause<SINCE>( false );
       q.addOrderClause<INSERTION_TIME>( false );
@@ -222,7 +222,7 @@ namespace cond {
     }
 
     bool IOV::Table::getSize( const std::string& tag, size_t& size ){
-      Query< SEQUENCE_SIZE > q( m_schema );
+      Query< SEQUENCE_SIZE > q( m_session );
       q.addCondition<TAG_NAME>( tag );
       for ( auto row : q ) {
 	size = std::get<0>(row);
@@ -232,7 +232,7 @@ namespace cond {
     }
     
     bool IOV::Table::getSnapshotSize( const std::string& tag, const boost::posix_time::ptime& snapshotTime, size_t& size ){
-      Query< SEQUENCE_SIZE > q( m_schema );
+      Query< SEQUENCE_SIZE > q( m_session );
       q.addCondition<TAG_NAME>( tag );
       q.addCondition<INSERTION_TIME>( snapshotTime,"<=" );
       for ( auto row : q ) {
@@ -246,30 +246,30 @@ namespace cond {
 				cond::Time_t since, 
 				cond::Hash payloadHash, 
 				const boost::posix_time::ptime& insertTimeStamp ){
-      RowBuffer< TAG_NAME, SINCE, PAYLOAD_HASH, INSERTION_TIME > dataToInsert( std::tie( tag, since, payloadHash, insertTimeStamp ) );
-      insertInTable( m_schema, tname, dataToInsert.get() );
+      RowBuffer< TAG_NAME, SINCE, PAYLOAD_HASH, INSERTION_TIME > dataToInsert( m_session, std::tie( tag, since, payloadHash, insertTimeStamp ) );
+      insertInTable( m_session, tname, dataToInsert.get() );
     }
     
     void IOV::Table::insertMany( const std::string& tag, 
 				 const std::vector<std::tuple<cond::Time_t,cond::Hash,boost::posix_time::ptime> >& iovs ){
-      BulkInserter< TAG_NAME, SINCE, PAYLOAD_HASH, INSERTION_TIME > inserter( m_schema, tname );
+      BulkInserter< TAG_NAME, SINCE, PAYLOAD_HASH, INSERTION_TIME > inserter( m_session, tname );
       for( auto row : iovs ) inserter.insert( std::tuple_cat( std::tie(tag),row ) );
       
       inserter.flush();
     }
 
     void IOV::Table::erase( const std::string& tag ){
-      DeleteBuffer buffer;
+      DeleteBuffer buffer( m_session ) ;
       buffer.addWhereCondition<TAG_NAME>( tag );
-      deleteFromTable( m_schema, tname, buffer );  
+      deleteFromTable( m_session, tname, buffer );  
     }
     
-    PAYLOAD::Table::Table( coral::ISchema& schema ):
-      m_schema( schema ){
+    PAYLOAD::Table::Table( coral::ISessionProxy& session ):
+      m_session( session ){
     }
 
     bool PAYLOAD::Table::exists(){
-      return existsTable( m_schema, tname );
+      return existsTable( m_session, tname );
     }
     
     void PAYLOAD::Table::create(){
@@ -280,11 +280,11 @@ namespace cond {
       
       TableDescription< HASH, OBJECT_TYPE, DATA, STREAMER_INFO, VERSION, INSERTION_TIME > descr( tname );
       descr.setPrimaryKey<HASH>();
-      createTable( m_schema, descr.get() );
+      createTable( m_session, descr.get() );
     }
     
     bool PAYLOAD::Table::select( const cond::Hash& payloadHash ){
-      Query< HASH > q( m_schema );
+      Query< HASH > q( m_session );
       q.addCondition<HASH>( payloadHash );
       for ( auto row : q ) {}
       
@@ -292,7 +292,7 @@ namespace cond {
     }
 
     bool PAYLOAD::Table::getType( const cond::Hash& payloadHash, std::string& objectType ){
-      Query< OBJECT_TYPE > q( m_schema );
+      Query< OBJECT_TYPE > q( m_session );
       q.addCondition<HASH>( payloadHash );
       for ( auto row : q ) {
 	objectType = std::get<0>(row);
@@ -305,7 +305,7 @@ namespace cond {
 				 std::string& objectType, 
 				 cond::Binary& payloadData,
 				 cond::Binary& streamerInfoData ){
-      Query< DATA, STREAMER_INFO, OBJECT_TYPE > q( m_schema );
+      Query< DATA, STREAMER_INFO, OBJECT_TYPE > q( m_session );
       q.addCondition<HASH>( payloadHash );
       for ( auto row : q ) {
 	std::tie( payloadData, streamerInfoData, objectType ) = row;
@@ -321,9 +321,10 @@ namespace cond {
       std::string version("dummy");
       cond::Binary sinfoData( streamerInfoData );
       if( !sinfoData.size() ) sinfoData.copy( std::string("0") );   
-      RowBuffer< HASH, OBJECT_TYPE, DATA, STREAMER_INFO, VERSION, INSERTION_TIME > dataToInsert( std::tie( payloadHash, objectType, payloadData, sinfoData, version, insertionTime ) ); 
+      RowBuffer< HASH, OBJECT_TYPE, DATA, STREAMER_INFO, VERSION, INSERTION_TIME > 
+	dataToInsert( m_session, std::tie( payloadHash, objectType, payloadData, sinfoData, version, insertionTime ) ); 
       bool failOnDuplicate = false;
-      return insertInTable( m_schema, tname, dataToInsert.get(), failOnDuplicate );
+      return insertInTable( m_session, tname, dataToInsert.get(), failOnDuplicate );
     }
 
     cond::Hash PAYLOAD::Table::insertIfNew( const std::string& payloadObjectType, 
@@ -338,12 +339,12 @@ namespace cond {
       return payloadHash;
     }
     
-    TAG_MIGRATION::Table::Table( coral::ISchema& schema ):
-      m_schema( schema ){
+    TAG_MIGRATION::Table::Table( coral::ISessionProxy& session ):
+      m_session( session ){
     }
 
     bool TAG_MIGRATION::Table::exists(){
-      return existsTable( m_schema, tname );  
+      return existsTable( m_session, tname );  
     }
     
     void TAG_MIGRATION::Table::create(){
@@ -354,11 +355,11 @@ namespace cond {
       TableDescription< SOURCE_ACCOUNT, SOURCE_TAG, TAG_NAME, STATUS_CODE, INSERTION_TIME > descr( tname );
       descr.setPrimaryKey<SOURCE_ACCOUNT, SOURCE_TAG>();
       descr.setForeignKey< TAG_NAME, TAG::NAME >( "TAG_NAME_FK" );
-      createTable( m_schema, descr.get() );
+      createTable( m_session, descr.get() );
     }
     
     bool TAG_MIGRATION::Table::select( const std::string& sourceAccount, const std::string& sourceTag, std::string& tagName, int& statusCode ){
-      Query< TAG_NAME, STATUS_CODE > q( m_schema );
+      Query< TAG_NAME, STATUS_CODE > q( m_session );
       q.addCondition<SOURCE_ACCOUNT>( sourceAccount );
       q.addCondition<SOURCE_TAG>( sourceTag );
       for ( auto row : q ) {
@@ -372,23 +373,23 @@ namespace cond {
     void TAG_MIGRATION::Table::insert( const std::string& sourceAccount, const std::string& sourceTag, const std::string& tagName, 
 				       int statusCode, const boost::posix_time::ptime& insertionTime ){
       RowBuffer< SOURCE_ACCOUNT, SOURCE_TAG, TAG_NAME, STATUS_CODE, INSERTION_TIME > 
-	dataToInsert( std::tie( sourceAccount, sourceTag, tagName, statusCode, insertionTime ) );
-      insertInTable( m_schema, tname, dataToInsert.get() );
+	dataToInsert( m_session, std::tie( sourceAccount, sourceTag, tagName, statusCode, insertionTime ) );
+      insertInTable( m_session, tname, dataToInsert.get() );
     }
 
     void TAG_MIGRATION::Table::updateValidationCode( const std::string& sourceAccount, const std::string& sourceTag, int statusCode ){
-      UpdateBuffer buffer;
+      UpdateBuffer buffer( m_session );
       buffer.setColumnData< STATUS_CODE >( std::tie( statusCode ) );
       buffer.addWhereCondition<SOURCE_ACCOUNT>( sourceAccount );
       buffer.addWhereCondition<SOURCE_TAG>( sourceTag );
-      updateTable( m_schema, tname, buffer );  
+      updateTable( m_session, tname, buffer );  
     }
     
-    IOVSchema::IOVSchema( coral::ISchema& schema ):
-      m_tagTable( schema ),
-      m_iovTable( schema ),
-      m_payloadTable( schema ),
-      m_tagMigrationTable( schema ){
+    IOVSchema::IOVSchema( coral::ISessionProxy& session ):
+      m_tagTable( session ),
+      m_iovTable( session ),
+      m_payloadTable( session ),
+      m_tagMigrationTable( session ){
     }
       
     bool IOVSchema::exists(){

@@ -24,7 +24,7 @@ namespace cond {
       
       class Table : public ITagTable {
       public:
-	explicit Table( coral::ISchema& schema );
+	explicit Table( coral::ISessionProxy& session );
 	virtual ~Table(){}
 	bool exists();
 	void create();
@@ -41,7 +41,7 @@ namespace cond {
 	void updateValidity( const std::string& name, cond::Time_t lastValidatedTime, const boost::posix_time::ptime& updateTime );
 	void setValidationMode(){}
       private:
-	coral::ISchema& m_schema;
+	coral::ISessionProxy& m_session;
       };
     }
 
@@ -58,7 +58,7 @@ namespace cond {
      
       class Table : public IPayloadTable {
       public:
-	explicit Table( coral::ISchema& schema );
+	explicit Table( coral::ISessionProxy& session );
 	virtual ~Table(){}
 	bool exists();
 	void create();
@@ -72,7 +72,7 @@ namespace cond {
 	cond::Hash insertIfNew( const std::string& objectType, const cond::Binary& payloadData, 
 				const cond::Binary& streamerInfoData, const boost::posix_time::ptime& insertionTime );
       private:
-	coral::ISchema& m_schema;
+	coral::ISessionProxy& m_session;
       };
     }
     
@@ -112,7 +112,7 @@ namespace cond {
      
       class Table : public IIOVTable {
       public:
-	explicit Table( coral::ISchema& schema );
+	explicit Table( coral::ISessionProxy& session );
 	virtual ~Table(){}
 	bool exists();
 	void create();
@@ -132,7 +132,7 @@ namespace cond {
 	void insertMany( const std::string& tag, const std::vector<std::tuple<cond::Time_t,cond::Hash,boost::posix_time::ptime> >& iovs );
 	void erase( const std::string& tag );
       private:
-	coral::ISchema& m_schema;
+	coral::ISessionProxy& m_session;
       };
     }
     
@@ -147,7 +147,7 @@ namespace cond {
       
       class Table : public ITagMigrationTable {
       public:
-	explicit Table( coral::ISchema& schema );
+	explicit Table( coral::ISessionProxy& session );
 	virtual ~Table(){}
 	bool exists();
 	void create();
@@ -156,13 +156,13 @@ namespace cond {
 		     int statusCode, const boost::posix_time::ptime& insertionTime);
 	void updateValidationCode( const std::string& sourceAccount, const std::string& sourceTag, int statusCode );
       private:
-	coral::ISchema& m_schema;
+	coral::ISessionProxy& m_session;
       };
     }
     
     class IOVSchema : public IIOVSchema {
     public: 
-      explicit IOVSchema( coral::ISchema& schema );
+      explicit IOVSchema( coral::ISessionProxy& session );
       virtual ~IOVSchema(){}
       bool exists();
       bool create();

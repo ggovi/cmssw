@@ -4,6 +4,7 @@
 //
 #include "CondCore/CondDB/src/DbCore.h"
 #include "CondCore/DBCommon/interface/DbTransaction.h"
+#include "CondCore/ORA/interface/ConnectionPool.h"
 //
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
@@ -101,7 +102,7 @@ namespace cond {
 			   std::vector<std::pair<cond::Time_t,boost::posix_time::ptime> >& loggedInsertions ){
       logDbSession.transaction().start( true );
       std::set<cond::Time_t> loggedSinces;
-      Query< COND_LOG_TABLE::EXECTIME, COND_LOG_TABLE::USERTEXT > q( logDbSession.nominalSchema() );
+      Query< COND_LOG_TABLE::EXECTIME, COND_LOG_TABLE::USERTEXT > q( logDbSession.storage().storageAccessSession().get() );
       q.addCondition<COND_LOG_TABLE::IOVTAG>( tag );
       for ( auto row : q ) {
 	if( std::get<1>( row ).empty() ) continue;

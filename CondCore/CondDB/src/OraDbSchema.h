@@ -136,6 +136,8 @@ namespace cond {
       bool exists(){
 	return true;
       }
+      void create(){
+      }
       bool select( const std::string& name );
       bool select( const std::string& name, cond::Time_t& validity, boost::posix_time::ptime& snapshotTime );
       bool select( const std::string& name, cond::Time_t& validity, std::string& description, 
@@ -155,6 +157,8 @@ namespace cond {
       bool exists(){
 	return true;
       }
+      void create(){
+      }
       bool select( const std::string& gtName, std::vector<std::tuple<std::string,std::string,std::string> >& tags );
       bool select( const std::string& gtName, const std::string& preFix, const std::string& postFix,
 		   std::vector<std::tuple<std::string,std::string,std::string> >& tags );
@@ -168,6 +172,7 @@ namespace cond {
       OraGTSchema( DbSession& session );
       virtual ~OraGTSchema(){}
       bool exists();
+      bool create(){ return false; }
       IGTTable& gtTable();
       IGTMapTable& gtMapTable();
     private:

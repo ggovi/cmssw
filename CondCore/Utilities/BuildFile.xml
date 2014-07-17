@@ -16,6 +16,7 @@
 <use   name="CondFormats/Alignment"/>
 <use   name="CondFormats/BeamSpotObjects"/>
 <use   name="CondFormats/CastorObjects"/>
+<use   name="CondFormats/Calibration"/>
 <use   name="CondFormats/HIObjects"/>
 <use   name="CondFormats/CSCObjects"/>
 <use   name="CondFormats/DTObjects"/>

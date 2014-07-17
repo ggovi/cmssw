@@ -10,6 +10,7 @@
 //
 //
 #include "RelationalAccess/ISessionProxy.h"
+#include "RelationalAccess/ISessionProperties.h"
 #include "RelationalAccess/ITransaction.h"
 
 namespace cond {
@@ -69,14 +70,14 @@ namespace cond {
       std::unique_ptr<IIOVSchema> iovSchemaHandle( new OraIOVSchema( oraSession ) );
       std::unique_ptr<IGTSchema> gtSchemaHandle( new OraGTSchema( oraSession ) );  		       
       if( !iovSchemaHandle->exists() && !gtSchemaHandle->exists() ){
-	iovSchemaHandle.reset( new IOVSchema( coralSession->nominalSchema() ) );
+	iovSchemaHandle.reset( new IOVSchema( *coralSession ) );
 	if( iovSchemaHandle->exists() ){
 	  ret = COND_DB;
 	}
       } else {
-	//	edm::LogWarning("CondDB") << "You are using conditions from the old database via: " 
-	//			  << connectionString 
-	//			  << std::endl;
+	edm::LogWarning("CondDB") << "You are using conditions from the old database via: " 
+				  << connectionString 
+				  << std::endl;
 	ret = ORA_DB;
       }
       oraSession.transaction().commit();
@@ -125,8 +126,8 @@ namespace cond {
 	  transaction.reset( new OraTransaction( oraSession ) );
 	} else if ( theBackendType == COND_DB ){
 	  coralSession->transaction().start( readOnly );
-	  iovSchemaHandle.reset( new IOVSchema( coralSession->nominalSchema() ) );
-	  gtSchemaHandle.reset( new GTSchema( coralSession->nominalSchema() ) );
+	  iovSchemaHandle.reset( new IOVSchema( *coralSession ) );
+	  gtSchemaHandle.reset( new GTSchema( *coralSession ) );
 	  transaction.reset( new CondDBTransaction( coralSession ) );
 	} else {
 	  throwException( "No valid database found.", "SessionImpl::startTransaction" );
@@ -165,33 +166,57 @@ namespace cond {
       return transaction->isActive();
     }
 
-    void SessionImpl::openIovDb( SessionImpl::FailureOnOpeningPolicy policy ){
-      if(!transaction.get()) throwException( "The transaction is not active.","SessionImpl::openIovDb" );
+    void SessionImpl::openDbForWriting( SessionImpl::FailureOnOpeningPolicy policy ){
+      if(!transaction.get()) throwException( "The transaction is not active.","SessionImpl::openDbForWriting" );
       if( !transaction->iovDbOpen ){
 	transaction->iovDbExists = iovSchemaHandle->exists();
 	transaction->iovDbOpen = true;
       }      
       if( !transaction->iovDbExists ){
+        if( policy == THROW ){
+	  throwException( "IOV Database does not exist.","SessionImpl::openDbForWriting");
+	} 
 	if( policy==CREATE ){
-	  iovSchemaHandle->create();
-	  transaction->iovDbExists = true;
-	} else {
-	  if( policy==THROW) throwException( "IOV Database does not exist.","SessionImpl::openIovDb");
-	}
+	  transaction->iovDbExists = iovSchemaHandle->create();
+	} 
       }
-    }
-
-    void SessionImpl::openGTDb(){
-      if(!transaction.get()) throwException( "The transaction is not active.","SessionImpl::open" );
       if( !transaction->gtDbOpen ){
 	transaction->gtDbExists = gtSchemaHandle->exists();
 	transaction->gtDbOpen = true;
       }
       if( !transaction->gtDbExists ){
-	throwException( "GT Database does not exist.","SessionImpl::openGTDb");
+        if( policy == THROW ){
+	  throwException( "GT  Database does not exist.","SessionImpl::openDbForWriting");
+	}	
+	if( policy==CREATE ){
+	  transaction->gtDbExists = gtSchemaHandle->create();
+	} 
       }
     }
-    
+
+    void SessionImpl::openIOVDbForReading( FailureOnOpeningPolicy policy ){
+      if(!transaction.get()) throwException( "The transaction is not active.","SessionImpl::openIOVDbForReading" );
+      if( !transaction->iovDbOpen ){
+	transaction->iovDbExists = iovSchemaHandle->exists();
+	transaction->iovDbOpen = true;
+      }      
+      if( !transaction->iovDbExists && policy == THROW ){
+	throwException( "IOV Database does not exist.","SessionImpl::openIOVDbForReading");
+      }
+    }
+      
+    void SessionImpl::openGTDbForReading( FailureOnOpeningPolicy policy ){
+      if(!transaction.get()) throwException( "The transaction is not active.","SessionImpl::openGTDbForReading" );
+      if( !transaction->gtDbOpen ){
+	transaction->gtDbExists = iovSchemaHandle->exists();
+	transaction->gtDbOpen = true;
+      }      
+      if( !transaction->gtDbExists && policy == THROW ){
+	throwException( "GT Database does not exist.","SessionImpl::openGTDbForReading");
+      }
+
+    }
+   
     IIOVSchema& SessionImpl::iovSchema(){
       return *iovSchemaHandle;
     }
@@ -201,7 +226,7 @@ namespace cond {
     }
 
     bool SessionImpl::isOra(){
-      if(!transaction.get()) throwException( "The transaction is not active.","SessionImpl::open" );
+      if(!transaction.get()) throwException( "The transaction is not active.","SessionImpl::isOra" );
       return transaction->isOra;
     }
 

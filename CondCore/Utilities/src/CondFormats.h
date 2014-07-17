@@ -6,6 +6,7 @@
 #include "CondFormats/Alignment/interface/AlignmentSurfaceDeformations.h"
 #include "CondFormats/Alignment/interface/Alignments.h"
 #include "CondFormats/BeamSpotObjects/interface/BeamSpotObjects.h"
+#include "CondFormats/Calibration/interface/Pedestals.h"
 #include "CondFormats/CastorObjects/interface/CastorElectronicsMap.h"
 #include "CondFormats/CastorObjects/interface/CastorSaturationCorrs.h"
 #include "CondFormats/HIObjects/interface/CentralityTable.h"

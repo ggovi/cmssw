@@ -58,8 +58,9 @@ namespace cond {
       void rollbackTransaction();
       bool isTransactionActive( bool deep=true ) const;
 
-      void openIovDb( FailureOnOpeningPolicy policy = THROW );
-      void openGTDb();
+      void openDbForWriting( FailureOnOpeningPolicy policy = THROW );
+      void openIOVDbForReading( FailureOnOpeningPolicy policy = THROW );
+      void openGTDbForReading( FailureOnOpeningPolicy policy = THROW );
       IIOVSchema& iovSchema();
       IGTSchema& gtSchema();
       // only for the bridging...

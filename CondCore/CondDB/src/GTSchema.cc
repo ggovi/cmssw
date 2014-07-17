@@ -1,20 +1,31 @@
 #include "CondCore/CondDB/interface/Exception.h"
 #include "GTSchema.h"
+#include "IOVSchema.h"
 //
 namespace cond {
 
   namespace persistency {
 
-    GLOBAL_TAG::Table::Table( coral::ISchema& schema ):
-      m_schema( schema ){
+    GLOBAL_TAG::Table::Table( coral::ISessionProxy& session ):
+      m_session( session ){
     }
 
     bool GLOBAL_TAG::Table::exists(){
-      return existsTable( m_schema, tname );
+      return existsTable( m_session, tname );
+    }
+
+    void GLOBAL_TAG::Table::create(){
+      if( exists() ){
+	throwException( "GLOBAL_TAG table already exists in this schema.",
+			"GLOBAL_TAG::Table::create");
+      }
+      TableDescription< NAME, VALIDITY, DESCRIPTION, RELEASE, SNAPSHOT_TIME, INSERTION_TIME > descr( tname );
+      descr.setPrimaryKey<NAME>();
+      createTable( m_session, descr.get() );
     }
 
     bool GLOBAL_TAG::Table::select( const std::string& name ){
-      Query< NAME > q( m_schema );
+      Query< NAME > q( m_session );
       q.addCondition<NAME>( name );
       for ( auto row : q ) {}
       
@@ -29,7 +40,7 @@ namespace cond {
       //Query< VALIDITY, SNAPSHOT_TIME > q( session.coralSchema() );
       //q.addCondition<NAME>( name );
       //for ( auto row : q ) std::tie( validity, snapshotTime ) = row;
-      Query< VALIDITY > q( m_schema );
+      Query< VALIDITY > q( m_session );
       q.addCondition<NAME>( name );
       for ( auto row : q ) std::tie( validity ) = row;
       
@@ -46,7 +57,7 @@ namespace cond {
       //Query< VALIDITY, DESCRIPTION, RELEASE, SNAPSHOT_TIME > q( session.coralSchema() );
       //q.addCondition<NAME>( name );
       //for ( auto row : q ) std::tie( validity, description, release, snapshotTime ) = row;
-      Query< VALIDITY, DESCRIPTION, RELEASE > q( m_schema );
+      Query< VALIDITY, DESCRIPTION, RELEASE > q( m_session );
       q.addCondition<NAME>( name );
       for ( auto row : q ) std::tie( validity, description, release ) = row;
       return q.retrievedRows();
@@ -59,8 +70,8 @@ namespace cond {
 				    const boost::posix_time::ptime& snapshotTime, 
 				    const boost::posix_time::ptime& insertionTime ){
       RowBuffer< NAME, VALIDITY, DESCRIPTION, RELEASE, SNAPSHOT_TIME, INSERTION_TIME > 
-	dataToInsert( std::tie( name, validity, description, release, snapshotTime, insertionTime ) );
-      insertInTable( m_schema, tname, dataToInsert.get() );
+	dataToInsert( m_session, std::tie( name, validity, description, release, snapshotTime, insertionTime ) );
+      insertInTable( m_session, tname, dataToInsert.get() );
     }
     
     void GLOBAL_TAG::Table::update( const std::string& name, 
@@ -69,23 +80,36 @@ namespace cond {
 				    const std::string& release, 
 				    const boost::posix_time::ptime& snapshotTime, 
 				    const boost::posix_time::ptime& insertionTime ){
-      UpdateBuffer buffer;
+      UpdateBuffer buffer( m_session );
       buffer.setColumnData< VALIDITY, DESCRIPTION, RELEASE, SNAPSHOT_TIME, INSERTION_TIME >( std::tie( validity, description, release, snapshotTime, insertionTime  ) );
       buffer.addWhereCondition<NAME>( name );
-      updateTable( m_schema, tname, buffer );  
+      updateTable( m_session, tname, buffer );  
     }
     
-    GLOBAL_TAG_MAP::Table::Table( coral::ISchema& schema ):
-      m_schema( schema ){
+    GLOBAL_TAG_MAP::Table::Table( coral::ISessionProxy& session ):
+      m_session( session ){
     }
 
     bool GLOBAL_TAG_MAP::Table::exists(){
-      return existsTable( m_schema, tname );
+      return existsTable( m_session, tname );
     }
     
+    void GLOBAL_TAG_MAP::Table::create(){
+      if( exists()){
+	throwException( "GLOBAL_TAG_MAP table already exists in this schema.",
+			"GLOBAL_TAG_MAP::Schema::create");
+      }
+      
+      TableDescription< GLOBAL_TAG_NAME, RECORD, LABEL, TAG_NAME > descr( tname );
+      descr.setPrimaryKey< GLOBAL_TAG_NAME, RECORD, LABEL >();
+      descr.setForeignKey< GLOBAL_TAG_NAME, GLOBAL_TAG::NAME >( "GLOBAL_TAG_NAME_FK" );
+      descr.setForeignKey< TAG_NAME, TAG::NAME >( "TAG_NAME_FK" );
+      createTable( m_session, descr.get() );
+    }
+
     bool GLOBAL_TAG_MAP::Table::select( const std::string& gtName, 
 					std::vector<std::tuple<std::string,std::string,std::string> >& tags ){
-      Query< RECORD, LABEL, TAG_NAME > q( m_schema );
+      Query< RECORD, LABEL, TAG_NAME > q( m_session );
       q.addCondition< GLOBAL_TAG_NAME >( gtName );
       q.addOrderClause<RECORD>();
       q.addOrderClause<LABEL>();
@@ -105,20 +129,30 @@ namespace cond {
 
     void GLOBAL_TAG_MAP::Table::insert( const std::string& gtName, 
 					const std::vector<std::tuple<std::string,std::string,std::string> >& tags ){
-      BulkInserter<GLOBAL_TAG_NAME, RECORD, LABEL, TAG_NAME > inserter( m_schema, tname );
+      BulkInserter<GLOBAL_TAG_NAME, RECORD, LABEL, TAG_NAME > inserter( m_session, tname );
       for( auto row : tags ) inserter.insert( std::tuple_cat( std::tie( gtName ),row ) );
       inserter.flush();  
     }
     
-    GTSchema::GTSchema( coral::ISchema& schema ):
-      m_gtTable( schema ),
-      m_gtMapTable( schema ){
+    GTSchema::GTSchema( coral::ISessionProxy& session ):
+      m_gtTable( session ),
+      m_gtMapTable( session ){
     }
 
     bool GTSchema::exists(){
       if( !m_gtTable.exists() ) return false;
       if( !m_gtMapTable.exists() ) return false;
       return true;
+    }
+
+    bool GTSchema::create(){
+      bool created = false;
+      if( !exists() ){
+	m_gtTable.create();
+	m_gtMapTable.create();
+	created = true;
+      }
+      return created;
     }
 
     GLOBAL_TAG::Table& GTSchema::gtTable(){
