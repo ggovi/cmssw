@@ -125,7 +125,7 @@ CondDBESSource::CondDBESSource( const edm::ParameterSet& iConfig ) :
   
   // default connection string
   // inproduction used for the global tag
-  m_connectionString= iConfig.getParameter<std::string>("connect");
+  if( iConfig.exists("connect") ) m_connectionString= iConfig.getParameter<std::string>("connect");
   
 
   // connection configuration
@@ -142,10 +142,10 @@ CondDBESSource::CondDBESSource( const edm::ParameterSet& iConfig ) :
       std::string recordname = itToGet->getParameter<std::string>( "record" );
       std::string labelname = itToGet->getUntrackedParameter<std::string>( "label", "" );
       std::string tag = itToGet->getParameter<std::string>( "tag" );
-      std::string pfn = itToGet->getUntrackedParameter<std::string>( "connect", m_connectionString );
+      std::string pfn = itToGet->getUntrackedParameter<std::string>( "connect", "" );
       std::string recordLabelKey = joinRecordAndLabel( recordname, labelname );
-      std::string fullyQualifiedTag = tag+"@["+pfn+"]";
-      replacements.insert( std::make_pair( recordLabelKey, cond::GTEntry_t( std::make_tuple(recordname, labelname, fullyQualifiedTag )  ) ) );
+      std::string fqTag = cond::persistency::fullyQualifiedTag(tag,pfn);
+      replacements.insert( std::make_pair( recordLabelKey, cond::GTEntry_t( std::make_tuple(recordname, labelname, fqTag )  ) ) );
     }
   }
   
