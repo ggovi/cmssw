@@ -32,13 +32,12 @@ process.GlobalTag.pfnPostfix=cms.untracked.string('')
 #'GR09_31X_V5P::All'
 #process.GlobalTag.pfnPrefix = "frontier://FrontierArc/"
 #process.GlobalTag.pfnPostfix = "_0911"
-#process.GlobalTag.toGet = cms.VPSet()
-#process.GlobalTag.toGet.append(
-#   cms.PSet(record = cms.string("BeamSpotObjectsRcd"),
-#            tag = cms.string("firstcollisions"),
-#             connect = cms.untracked.string("frontier://PromptProd/CMS_COND_31X_BEAMSPOT")
-#           )
-#)
+process.GlobalTag.toGet = cms.VPSet()
+process.GlobalTag.toGet.append(
+   cms.PSet(record = cms.string("BeamSpotObjectsRcd"),
+            tag = cms.string("firstcollisions"),
+           )
+)
 
 
 
