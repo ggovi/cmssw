@@ -133,8 +133,10 @@ I will ask you some questions to fill the metadata file. For some of the questio
             inputTag = getInputChoose(inputTags, '0',
                                       '\nWhich is the input tag (i.e. the tag to be read from the SQLite data file)?\ne.g. 0 (you select the first in the list)\ninputTag [0]: ')
 
-        destinationDatabase = getInputRepeat(
-            '\nWhich is the destination database where the tags should be exported? \ne.g. oracle://cms_orcon_prod/CMS_CONDITIONS (for prod) or oracle://cms_orcoff_prep/CMS_CONDITIONS (for prep) \ndestinationDatabase: ')
+        destinationDatabase = ''
+        while ( destinationDatabase != 'oracle://cms_orcon_prod/CMS_CONDITIONS' and destinationDatabase != 'oracle://cms_orcoff_prep/CMS_CONDITIONS' ): 
+            destinationDatabase = getInputRepeat(
+                '\nWhich is the destination database where the tags should be exported? \ne.g. oracle://cms_orcon_prod/CMS_CONDITIONS (for prod) or oracle://cms_orcoff_prep/CMS_CONDITIONS (for prep) \ndestinationDatabase: ')
 
         while True:
             since = getInput('',
@@ -671,17 +673,22 @@ def uploadAllFiles(options, arguments):
                 metadata = json.load( metadataFile )
             # GG 2016-01-13 When dest db = prep the hostname has to be set to dev.
             forceHost = False
-            if metadata['destinationDatabase'].startswith('oracle://cms_orcoff_prep'):
-                dropBox.setHost( defaultDevHostname )
-                dropBox.signInAgain()
-                forceHost = True
-            results[filename] = dropBox.uploadFile(filename, options.backend, options.temporaryFile)
-            if forceHost:
-                # set back the hostname to the original global setting
-                dropBox.setHost( options.hostname )
-                dropBox.signInAgain()
+            destDb = metadata['destinationDatabase']
+            if destDb.startswith('oracle://cms_orcon_prod') or destDb.startswith('oracle://cms_orcoff_prep'):
+                if destDb.startswith('oracle://cms_orcoff_prep'):
+                    dropBox.setHost( defaultDevHostname )
+                    dropBox.signInAgain()
+                    forceHost = True
+                results[filename] = dropBox.uploadFile(filename, options.backend, options.temporaryFile)
+                if forceHost:
+                    # set back the hostname to the original global setting
+                    dropBox.setHost( options.hostname )
+                    dropBox.signInAgain()
+            else:
+                results[filename] = False
+                logging.error("Error: destinationDatabase %s is not valid. Skipping the upload." %destDb)
 
-        logging.debug("all files uploaded, logging out now.")
+        logging.debug("all files processed, logging out now.")
 
         dropBox.signOut()
 
