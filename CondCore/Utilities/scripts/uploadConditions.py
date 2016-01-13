@@ -25,7 +25,8 @@ import json
 import tempfile
 
 defaultBackend = 'online'
-defaultHostname = 'cms-conddb-dev.cern.ch'
+defaultHostname = 'cms-conddb-prod.cern.ch'
+defaultDevHostname = 'cms-conddb-dev.cern.ch'
 defaultUrlTemplate = 'https://%s/cmsDbUpload/'
 defaultTemporaryFile = 'upload.tar.bz2'
 defaultNetrcHost = 'Dropbox'
@@ -133,7 +134,7 @@ I will ask you some questions to fill the metadata file. For some of the questio
                                       '\nWhich is the input tag (i.e. the tag to be read from the SQLite data file)?\ne.g. 0 (you select the first in the list)\ninputTag [0]: ')
 
         destinationDatabase = getInputRepeat(
-            '\nWhich is the destination database where the tags should be exported? \ne.g. prod: oracle://cms_orcon_prod/CMS_CONDITIONS - prep: oracle://cms_orcoff_prep/CMS_CONDITIONS\ndestinationDatabase: ')
+            '\nWhich is the destination database where the tags should be exported? \ne.g. oracle://cms_orcon_prod/CMS_CONDITIONS (for prod) or oracle://cms_orcoff_prep/CMS_CONDITIONS (for prep) \ndestinationDatabase: ')
 
         while True:
             since = getInput('',
@@ -422,12 +423,21 @@ class ConditionsUploader(object):
 
     def __init__(self, hostname = defaultHostname, urlTemplate = defaultUrlTemplate):
         self.hostname = hostname
+        self.urlTemplate = urlTemplate 
         self.userName = None
-        self.http = HTTP()
-        self.http.setBaseUrl(urlTemplate % hostname)
+        self.http = None
+        self.password = None
+        #self.http = HTTP()
+        #self.http.setBaseUrl(urlTemplate % hostname)
 
+    def setHost( self, hostname ):
+        self.hostname = hostname
 
     def signIn(self, username, password):
+        ''' init the server.
+        '''
+        self.http = HTTP()
+        self.http.setBaseUrl(self.urlTemplate % self.hostname)
         '''Signs in the server.
         '''
 
@@ -444,8 +454,11 @@ class ConditionsUploader(object):
 
         logging.debug( "got: '%s'", str(self.token) )
         self.userName = username
-
+        self.password = password
         return True
+
+    def signInAgain(self):
+        return self.signIn( self.userName, self.password )
 
     def signOut(self):
         '''Signs out the server.
@@ -571,8 +584,9 @@ class ConditionsUploader(object):
         if len(skippedTags) > 0: logging.warning("tags SKIPped to upload   : %s ", str(skippedTags) )
         if len(failedTags)  > 0: logging.error  ("tags FAILed  to upload   : %s ", str(failedTags) )
 
-        fileLogURL = 'https://cms-conddb-dev.cern.ch/logs/dropBox/getFileLog?fileHash=%s' 
-        logging.info('file log at: %s', fileLogURL % fileHash)
+        fileLogURL = 'https://%s/logs/dropBox/getFileLog?fileHash=%s' 
+        #fileLogURL = 'https://cms-conddb-dev.cern.ch/logs/dropBox/getFileLog?fileHash=%s' 
+        logging.info('file log at: %s', fileLogURL % (self.hostname,fileHash))
 
         return len(okTags)>0
 
@@ -650,7 +664,23 @@ def uploadAllFiles(options, arguments):
         dropBox._checkForUpdates()
 
         for filename in arguments:
+            backend = options.backend
+            basepath = filename.rsplit('.db', 1)[0].rsplit('.txt', 1)[0]
+            metadataFilename = '%s.txt' % basepath
+            with open(metadataFilename, 'rb') as metadataFile:
+                metadata = json.load( metadataFile )
+            # GG 2016-01-13 When dest db = prep the hostname has to be set to dev.
+            forceHost = False
+            if metadata['destinationDatabase'].startswith('oracle://cms_orcoff_prep'):
+                dropBox.setHost( defaultDevHostname )
+                dropBox.signInAgain()
+                forceHost = True
             results[filename] = dropBox.uploadFile(filename, options.backend, options.temporaryFile)
+            if forceHost:
+                # set back the hostname to the original global setting
+                dropBox.setHost( options.hostname )
+                dropBox.signInAgain()
+
         logging.debug("all files uploaded, logging out now.")
 
         dropBox.signOut()
