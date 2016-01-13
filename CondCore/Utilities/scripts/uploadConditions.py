@@ -429,8 +429,6 @@ class ConditionsUploader(object):
         self.userName = None
         self.http = None
         self.password = None
-        #self.http = HTTP()
-        #self.http.setBaseUrl(urlTemplate % hostname)
 
     def setHost( self, hostname ):
         self.hostname = hostname
@@ -587,7 +585,6 @@ class ConditionsUploader(object):
         if len(failedTags)  > 0: logging.error  ("tags FAILed  to upload   : %s ", str(failedTags) )
 
         fileLogURL = 'https://%s/logs/dropBox/getFileLog?fileHash=%s' 
-        #fileLogURL = 'https://cms-conddb-dev.cern.ch/logs/dropBox/getFileLog?fileHash=%s' 
         logging.info('file log at: %s', fileLogURL % (self.hostname,fileHash))
 
         return len(okTags)>0
@@ -671,7 +668,7 @@ def uploadAllFiles(options, arguments):
             metadataFilename = '%s.txt' % basepath
             with open(metadataFilename, 'rb') as metadataFile:
                 metadata = json.load( metadataFile )
-            # GG 2016-01-13 When dest db = prep the hostname has to be set to dev.
+            # When dest db = prep the hostname has to be set to dev.
             forceHost = False
             destDb = metadata['destinationDatabase']
             if destDb.startswith('oracle://cms_orcon_prod') or destDb.startswith('oracle://cms_orcoff_prep'):
