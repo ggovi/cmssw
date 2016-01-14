@@ -134,9 +134,19 @@ I will ask you some questions to fill the metadata file. For some of the questio
                                       '\nWhich is the input tag (i.e. the tag to be read from the SQLite data file)?\ne.g. 0 (you select the first in the list)\ninputTag [0]: ')
 
         destinationDatabase = ''
+        ntry = 0
         while ( destinationDatabase != 'oracle://cms_orcon_prod/CMS_CONDITIONS' and destinationDatabase != 'oracle://cms_orcoff_prep/CMS_CONDITIONS' ): 
-            destinationDatabase = getInputRepeat(
-                '\nWhich is the destination database where the tags should be exported? \ne.g. oracle://cms_orcon_prod/CMS_CONDITIONS (for prod) or oracle://cms_orcoff_prep/CMS_CONDITIONS (for prep) \ndestinationDatabase: ')
+            if ntry==0:
+                inputMessage = \
+                '\nWhich is the destination database where the tags should be exported? \nPossible choices: oracle://cms_orcon_prod/CMS_CONDITIONS (for prod) or oracle://cms_orcoff_prep/CMS_CONDITIONS (for prep) \ndestinationDatabase: '
+            elif ntry==1:
+                inputMessage = \
+                '\nPlease choose one of the two valid destinations: \noracle://cms_orcon_prod/CMS_CONDITIONS (for prod) or oracle://cms_orcoff_prep/CMS_CONDITIONS (for prep) \
+\ndestinationDatabase: '
+            else:
+                raise Exception('No valid destination chosen. Bailing out...')
+            destinationDatabase = getInputRepeat(inputMessage)
+            ntry += 1
 
         while True:
             since = getInput('',
@@ -176,7 +186,6 @@ The tags (and its dependencies) can be synchronized to several workflows. You ca
                 logging.warning(
                     'You already added this destination tag. Overwriting the previous one with this new one.')
 
-            print( "The synchronization will be set to 'any' - the value is ignored for existing tags.") 
             synchronizeTo = 'any'
 
             dependencies = {}
