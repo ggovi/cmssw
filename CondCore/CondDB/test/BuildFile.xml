@@ -2,6 +2,7 @@
 
 <use   name="CondCore/CondDB"/>
 <use   name="CondFormats/Common"/>
+<use   name="CondFormats/DTObjects"/>
 <use   name="DataFormats/StdDictionaries"/>
 <use   name="FWCore/PluginManager"/>
 <use   name="FWCore/Utilities"/>
@@ -9,6 +10,9 @@
 <library file="" name="testCondDBDict"/>
 
 <bin file="testReadWritePayloads.cpp" name="testReadWritePayloads">
+</bin>
+
+<bin file="testRestConditionDatabase.cpp" name="testRestConditionDatabase">
 </bin>
 
 <bin   file="testConditionDatabase_0.cpp" name="testConditionDatabase_0">

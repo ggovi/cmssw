@@ -1,6 +1,7 @@
 #include "CondCore/CondDB/interface/ConnectionPool.h"
 #include "DbConnectionString.h"
 #include "SessionImpl.h"
+#include "NoSqlEngine.h"
 #include "IOVSchema.h"
 //
 #include "CondCore/CondDB/interface/CoralServiceManager.h"
@@ -154,9 +155,14 @@ namespace cond {
 
     Session ConnectionPool::createSession( const std::string& connectionString, 
                                            const std::string& transactionId, 
-                                           bool writeCapable ){
+                                           bool writeCapable,
+                                           BackendType backType ){
+
+      if ( NoSqlEngine::backend(connectionString) != UNKNOWN_DB ){
+        return Session( NoSqlEngine::sessionImpl( connectionString ) );
+      }
       std::shared_ptr<coral::ISessionProxy> coralSession = createCoralSession( connectionString, transactionId, writeCapable );
-      return Session( std::make_shared<SessionImpl>( coralSession, connectionString ));
+      return Session( std::make_shared<SessionImpl>( coralSession, connectionString, COND_DB ));
     }
 
     Session ConnectionPool::createSession( const std::string& connectionString, bool writeCapable ){

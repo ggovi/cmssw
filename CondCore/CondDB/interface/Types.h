@@ -24,7 +24,8 @@ namespace cond {
     std::string usertext;
   };
 
-
+  typedef enum { UNKNOWN_DB=0, COND_DB, REST } BackendType;
+  static constexpr BackendType DEFAULT_DB = COND_DB;
 
   typedef enum { 
     SYNCH_ANY = 0,

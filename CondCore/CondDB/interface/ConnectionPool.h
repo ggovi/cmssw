@@ -51,7 +51,8 @@ namespace cond {
                                                                   bool writeCapable = false );
       Session createSession( const std::string& connectionString, 
                              const std::string& transactionId, 
-                             bool writeCapable = false );
+                             bool writeCapable = false,
+                             BackendType backType=DEFAULT_DB );
       void configure( coral::IConnectionServiceConfiguration& coralConfig );
     private:
       std::string m_authPath = std::string( "" );
