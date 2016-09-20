@@ -19,7 +19,8 @@ using namespace cond::persistency;
 
 int run( const std::string& connectionString ){
   try{
-
+    auto a = std::string { "mystring" };
+    std::cout <<" Ciao "<<a<<std::endl;
     //*************
     std::cout <<"# Connecting with db in "<<connectionString<<std::endl;
     ConnectionPool connPool;

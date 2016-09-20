@@ -292,8 +292,8 @@ namespace cond {
       const std::string M_VALIDITY    = "validity";
       const std::string M_DESCRIPTION = "description";
       const std::string M_RELEASE     = "release";
-      const std::string M_SNAP_TIME   = "snapshotTime";
-      const std::string M_INSERT_TIME = "insertionTime";
+      const std::string M_SNAP_TIME   = "snapshotTimeMilli";
+      const std::string M_INSERT_TIME = "insertionTimeMilli";
     };
     
     // ???? static constexpr unsigned int PAYLOAD_HASH_SIZE = 40; 

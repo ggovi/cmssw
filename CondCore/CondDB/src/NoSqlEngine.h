@@ -97,7 +97,7 @@ namespace cond {
            //  return create<PostgrestSession, PostgrestTransaction>( "test-nosql-db.cern.ch:3000", bt);
            //  break;
            case REST:
-             return create<RestSession, RestTransaction>( "http://test-nosql-db.cern.ch:8080", bt);
+             return create<RestSession, RestTransaction>( "http://conddb04.cern.ch:80", bt);
              break;
            case UNKNOWN_DB:
              throwException( "NoSqlEngine cannot create SessionImpl for connection string: " + connStr, "NoSqlEngine::create" );

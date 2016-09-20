@@ -218,9 +218,8 @@ namespace cond {
  
     size_t IovService::selectLatestByGroup( const std::string& tag, cond::Time_t lowerSinceGroup, cond::Time_t upperSinceGroup , 
 					    std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs ){
-      throwException( "IovService::selectLatestByGroup is not yet implemented! ", "IovService::selectLatestByGroup" );
-      size_t initialSize = iovs.size();
-      return iovs.size()-initialSize;
+      std::cout <<"WARNING: re-directing to method selectSnapshotByGroup wirh snapshotTime=MAX_TIESTAMP"<<std::endl;
+      return selectSnapshotByGroup( tag, lowerSinceGroup, upperSinceGroup, boost::posix_time::time_from_string(std::string(cond::time::MAX_TIMESTAMP) ), iovs );
     }
     
     size_t IovService::selectSnapshotByGroup( const std::string& tag, cond::Time_t lowerSinceGroup, cond::Time_t upperSinceGroup, 
@@ -240,6 +239,7 @@ namespace cond {
 #ifdef USE_PTREE // Use ptree.
         boost::property_tree::ptree pt = getPtree( response.text );
         for ( auto iter: pt ) {
+	    if( iovs.size()-initialSize && std::get<0>(iovs.back()) == iter.second.get<cond::Time_t>(M_SINCE) ) continue;
             iovs.push_back(std::make_tuple(
             iter.second.get<cond::Time_t>(M_SINCE),
             iter.second.get<cond::Hash>(M_HASH) ) );
@@ -254,9 +254,8 @@ namespace cond {
     
     size_t IovService::selectLatest( const std::string& tag,
                                         std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs ){
-      throwException( "IovService::selectLatest is not yet implemented! ", "IovService::selectLatest" );
-      size_t initialSize = iovs.size();
-      return iovs.size()-initialSize;
+      std::cout <<"WARNING: re-directing to method selectSnapshot wirh snapshotTime=MAX_TIESTAMP"<<std::endl;
+      return selectSnapshot( tag, boost::posix_time::time_from_string(std::string(cond::time::MAX_TIMESTAMP) ), iovs );
     }
 
     size_t IovService::selectSnapshot( const std::string& tag, const boost::posix_time::ptime& snapshotTime,
@@ -265,13 +264,18 @@ namespace cond {
       auto cprUrl = cpr::Url{ m_session->getUrl() + M_IOV_PATH + M_FUNC_SELECT_SNAPSHOT
         + "?tagname="  + tag 
         + "&snapshot=" + std::to_string(ptimeInMilliseconds(snapshotTime)) };
+      std::cout << std::string( m_session->getUrl() + M_IOV_PATH + M_FUNC_SELECT_SNAPSHOT
+        + "?tagname="  + tag
+				+ "&snapshot=" + std::to_string(ptimeInMilliseconds(snapshotTime)) ) <<std::endl;
       auto response = cpr::Get( cprUrl, cpr::Timeout{0L} );
-      if ( !CheckResponseStatus( response.status_code, "IOVService::selectSnapshotByGroup" ) ) {
+      if ( !CheckResponseStatus( response.status_code, "IOVService::selectSnapshot" ) ) {
+	std::cout << response.text <<std::endl;
         return false;
       } else {
 #ifdef USE_PTREE // Use ptree.
         boost::property_tree::ptree pt = getPtree( response.text );
         for ( auto iter: pt ) {
+	if( iovs.size()-initialSize && std::get<0>(iovs.back()) == iter.second.get<cond::Time_t>(M_SINCE) ) continue;
           iovs.push_back(std::make_tuple(
             iter.second.get<cond::Time_t>(M_SINCE),
             iter.second.get<cond::Hash>(M_HASH) ) );
