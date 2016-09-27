@@ -193,7 +193,7 @@ bool cond::UntypedPayloadProxy::get( cond::Time_t targetTime, bool debug ){
       if( debug ) std::cout <<"Loaded payload of type \""<< payloadType <<"\" (" << m_buffer.size() << " bytes)"<<std::endl;  
     }
     // check if hash is correct:
-    cond::Hash localHash = cond::persistency::makeHash( payloadType, m_buffer );
+    cond::Hash localHash = cond::makeHash( payloadType, m_buffer );
     if ( localHash != m_data->current.payloadId ) {
       std::cout <<"ERROR: payload of type " << payloadType << " with id " << m_data->current.payloadId << " in DB has wrong local hash: " << localHash << std::endl;
     }

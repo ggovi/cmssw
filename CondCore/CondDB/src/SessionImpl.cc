@@ -1,6 +1,8 @@
 #include "CondCore/CondDB/interface/Exception.h"
 #include "SessionImpl.h"
 #include "DbConnectionString.h"
+#include "NoSqlEngine.h"
+#include "ICondTransaction.h"
 //
 //
 #include "RelationalAccess/ISessionProxy.h"
@@ -10,13 +12,17 @@ namespace cond {
 
   namespace persistency {
 
-    class CondDBTransaction : public ITransaction {
+    class CondDBTransaction : public ICondTransaction {
     public:
       CondDBTransaction( const std::shared_ptr<coral::ISessionProxy>& coralSession ):
 	m_session( coralSession ){
       }
       virtual ~CondDBTransaction(){}
      
+      void start( bool readOnly = true ){
+
+      };
+
       void commit(){
 	m_session->transaction().commit();
       }
@@ -28,19 +34,43 @@ namespace cond {
       bool isActive(){
 	return m_session->transaction().isActive();
       }
+
+      bool isActive() const {
+        return m_session->transaction().isActive();
+      }
+
+      bool isReadOnly() const { /* FIXME: RS */
+        //throwException( "Under construction... ", "CondDBTransaction::isReadOnly");
+        return false;
+      }
     private: 
       std::shared_ptr<coral::ISessionProxy> m_session;
     };
 
+
     SessionImpl::SessionImpl():
-      coralSession(){
+      coralSession(),
+      theBackendType( UNKNOWN_DB ) {
     }
 
     SessionImpl::SessionImpl( std::shared_ptr<coral::ISessionProxy>& session, 
-			      const std::string& connectionStr ):
-      coralSession( session ),
-      connectionString( connectionStr ){
+			      const std::string& connectionStr,
+                              BType backType ):
+      //coralSession( session ),
+      connectionString( connectionStr ),
+      theBackendType( backType ){
+
+      coralSession.reset( new DataSource<coral::ISessionProxy>( session ) );
     }
+
+    /* DataSource constructed. New, generic one. */
+    SessionImpl::SessionImpl( std::shared_ptr<DataSourceBase>& session,
+                              const std::string& connectionStr,
+                              BType backType ):
+      connectionString( connectionStr),
+      theBackendType( backType ) {
+      coralSession = session;
+    } 
 
     SessionImpl::~SessionImpl(){
       close();
@@ -61,14 +91,23 @@ namespace cond {
     }
 
     void SessionImpl::startTransaction( bool readOnly ){
-      if( !transaction.get() ){ 
-	coralSession->transaction().start( readOnly );
-	iovSchemaHandle.reset( new IOVSchema( coralSession->nominalSchema() ) );
-	gtSchemaHandle.reset( new GTSchema( coralSession->nominalSchema() ) );
-	transaction.reset( new CondDBTransaction( coralSession ) );
+      if( !transaction.get() ){
+        if ( theBackendType == COND_DB ) {
+          std::shared_ptr<coral::ISessionProxy>& cSess = coralSession->getAs<coral::ISessionProxy>();
+  	  coralSession->transaction().start( readOnly );
+	  iovSchemaHandle.reset( new IOVSchema( cSess->nominalSchema() ) );
+	  gtSchemaHandle.reset( new GTSchema( cSess->nominalSchema() ) );
+	  transaction.reset( new CondDBTransaction( cSess ) );
+      
+        } else if ( theBackendType == REST ) {
+          NoSqlEngine::resetAs<RestSession, RestSchema, RestGTSchema, RestTransaction>(
+              coralSession, iovSchemaHandle, gtSchemaHandle, transaction, readOnly );
+        } else {
+          throwException( "No valid database found.", "SessionImpl::startTransaction" );
+        }
       } else {
-	if(!readOnly ) throwException( "An update transaction is already active.",
-				       "SessionImpl::startTransaction" );
+	  if(!readOnly ) throwException( "An update transaction is already active.",
+	   			         "SessionImpl::startTransaction" );
       }
       transaction->clients++;
     }

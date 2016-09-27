@@ -231,12 +231,12 @@ CondDBESSource::CondDBESSource( const edm::ParameterSet& iConfig ) :
     std::map<std::string, cond::persistency::Session>::iterator p = sessions.find( connStr );
     cond::persistency::Session nsess;
     if (p == sessions.end()) {
-      std::string oracleConnStr = cond::persistency::convertoToOracleConnection( connStr );
-      std::tuple<std::string,std::string,std::string> connPars = cond::persistency::parseConnectionString( oracleConnStr );
-      std::string dbService = std::get<1>( connPars );
-      std::string dbAccount = std::get<2>( connPars );
-      if( (dbService == "cms_orcon_prod" || dbService == "cms_orcon_adg") && dbAccount != "CMS_CONDITIONS" )
-	edm::LogWarning( "CondDBESSource" )<<"[WARNING] You are reading tag \""<<tag<<"\" from V1 account \""<<connStr<<"\". The concerned Conditions might be out of date."<<std::endl;
+      //std::string oracleConnStr = cond::persistency::convertoToOracleConnection( connStr );
+      //std::tuple<std::string,std::string,std::string> connPars = cond::persistency::parseConnectionString( oracleConnStr );
+      //std::string dbService = std::get<1>( connPars );
+      //std::string dbAccount = std::get<2>( connPars );
+      //if( (dbService == "cms_orcon_prod" || dbService == "cms_orcon_adg") && dbAccount != "CMS_CONDITIONS" )
+      //edm::LogWarning( "CondDBESSource" )<<"[WARNING] You are reading tag \""<<tag<<"\" from V1 account \""<<connStr<<"\". The concerned Conditions might be out of date."<<std::endl;
       //open db get tag info (i.e. the IOV token...)
       nsess = m_connection.createReadOnlySession( connStr, "" );
       sessions.insert(std::make_pair( connStr, nsess));
@@ -571,12 +571,12 @@ void CondDBESSource::fillTagCollectionFromGT( const std::string & connectionStri
   if ( !roottag.empty() ) {
     if ( connectionString.empty() )
       throw cond::Exception( std::string( "ESSource: requested global tag ") + roottag + std::string( " but not connection string given" ) );
-    std::tuple<std::string,std::string,std::string> connPars = cond::persistency::parseConnectionString( connectionString );
-    if( std::get<2>( connPars ) == "CMS_COND_31X_GLOBALTAG" ){
-      edm::LogWarning( "CondDBESSource" )<<"[WARNING] You are reading Global Tag \""<<roottag<<"\" from V1 account \"CMS_COND_31X_GLOBALTAG\". The concerned Conditions might be out of date."<<std::endl;
-    } else if( roottag.rfind("::All")!=std::string::npos && std::get<2>( connPars ) == "CMS_CONDITIONS" ){
-      edm::LogWarning( "CondDBESSource" )<<"[WARNING] You are trying to read Global Tag \""<<roottag<<"\" - postfix \"::All\" should not be used for V2."<<std::endl;      
-    }
+    //std::tuple<std::string,std::string,std::string> connPars = cond::persistency::parseConnectionString( connectionString );
+    //if( std::get<2>( connPars ) == "CMS_COND_31X_GLOBALTAG" ){
+    //  edm::LogWarning( "CondDBESSource" )<<"[WARNING] You are reading Global Tag \""<<roottag<<"\" from V1 account \"CMS_COND_31X_GLOBALTAG\". The concerned Conditions might be out of date."<<std::endl;
+    //} else if( roottag.rfind("::All")!=std::string::npos && std::get<2>( connPars ) == "CMS_CONDITIONS" ){
+    //  edm::LogWarning( "CondDBESSource" )<<"[WARNING] You are trying to read Global Tag \""<<roottag<<"\" - postfix \"::All\" should not be used for V2."<<std::endl;      
+    //}
     cond::persistency::Session session = m_connection.createSession( connectionString );
     session.transaction().start( true );
     cond::persistency::GTProxy gtp = session.readGlobalTag( roottag, prefix, postfix );
