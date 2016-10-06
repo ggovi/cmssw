@@ -30,6 +30,7 @@ int run( const std::string& connectionString ){
     }
     for( int i=0;i<10;i++ ){
       cond::BasicPayload  p( i*10.1, i+1. );
+      for( int j=0;j<100;j++ ) p.m_vec.push_back( (float)j );
       auto pid = session.storePayload( p );
       editor.insert( i*100+1, pid );
     }

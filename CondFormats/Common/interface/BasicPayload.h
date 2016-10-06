@@ -17,6 +17,7 @@ namespace cond {
   public:
     float m_data0;
     float m_data1;
+    std::vector<float> m_vec;
   
   COND_SERIALIZABLE;
 };
