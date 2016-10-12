@@ -275,7 +275,7 @@ namespace cond {
 
       // this one can ( and in general should ) be overridden - the implementation should use fillWithValue
       virtual bool fill( const boost::python::list& iovs, std::vector<std::tuple<float,float,float> >& plotData ) override {
-	cond::persistency::PayloadReader& reader = Plot2D<PayloadType,float,float,float>::databaseReader();
+	cond::persistency::PayloadReader& reader = Base::databaseReader();
 	for( int i=0; i< len( iovs ); i++ ) {
 	  cond::Iov_t iov = boost::python::extract<cond::Iov_t>( iovs[i] );
 	  std::shared_ptr<PayloadType> payload = reader.fetch<PayloadType>( iov.payloadId );
