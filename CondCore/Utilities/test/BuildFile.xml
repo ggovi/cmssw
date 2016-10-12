@@ -7,3 +7,5 @@
 </bin>
 <bin   file="testJsonPrinter.cpp" name="testJsonPrinter">
 </bin>
+<bin   file="testHistograms.cpp" name="testHistograms">
+</bin>

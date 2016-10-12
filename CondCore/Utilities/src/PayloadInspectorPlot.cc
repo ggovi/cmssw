@@ -34,9 +34,7 @@ namespace cond {
       return true;
     }
 
-    std::string PlotBase::processData( const boost::python::list& iovs ){
-      // printout for test in python...
-      std::cout <<"base type..."<<std::endl;
+    std::string PlotBase::processData( const boost::python::list& ){
       return ""; 
     }
 
