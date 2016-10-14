@@ -254,7 +254,7 @@ namespace cond {
       typedef Plot1D<PayloadType,float,float > Base;
       // naive implementation, essentially provided as an example...
       Histogram1D( const std::string& title, const std::string& xLabel, size_t nbins, float min, float max ):
-	Plot1D<PayloadType,float,float>( "Histo1D", title, xLabel , "entries" ),m_min(min),m_max(max){
+	Base( "Histo1D", title, xLabel , "entries" ),m_min(min),m_max(max){
 	float binSize = (max-min)/nbins;
 	if( binSize>0 ){
           m_binSize = binSize;
@@ -305,7 +305,7 @@ namespace cond {
       // naive implementation, essentially provided as an example...
       Histogram2D( const std::string& title, const std::string& xLabel, size_t nxbins, float xmin, float xmax, 
 		                             const std::string& yLabel, size_t nybins, float ymin, float ymax  ):
-	Plot2D<PayloadType,float,float,float>( "Histo2D", title, xLabel , yLabel, "entries" ),m_nxbins( nxbins), m_xmin(xmin),m_xmax(xmax),m_ymin(ymin),m_ymax(ymax){
+	Base( "Histo2D", title, xLabel , yLabel, "entries" ),m_nxbins( nxbins), m_xmin(xmin),m_xmax(xmax),m_ymin(ymin),m_ymax(ymax){
 	float xbinSize = (xmax-xmin)/nxbins;
         float ybinSize = (ymax-ymin)/nybins;
 	if( xbinSize>0 && ybinSize>0){
