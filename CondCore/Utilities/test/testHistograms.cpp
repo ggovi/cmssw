@@ -1,6 +1,6 @@
 #include<iostream>
 #include<sstream>
-#include "CondCore/Utilities/interface/PayloadInspectorPlot.h"
+#include "CondCore/Utilities/interface/PayloadInspector.h"
 
 int main() {
 

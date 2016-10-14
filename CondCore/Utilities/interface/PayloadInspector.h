@@ -1,5 +1,5 @@
-#ifndef CondCore_Utilities_PayloadInspectorPlot_h
-#define CondCore_Utilities_PayloadInspectorPlot_h
+#ifndef CondCore_Utilities_PayloadInspector_h
+#define CondCore_Utilities_PayloadInspector_h
 
 #include "CondCore/CondDB/interface/Utils.h"
 #include "CondCore/CondDB/interface/PayloadReader.h"

@@ -1,5 +1,5 @@
 #include "CondCore/Utilities/interface/PayloadInspectorModule.h"
-#include "CondCore/Utilities/interface/PayloadInspectorPlot.h"
+#include "CondCore/Utilities/interface/PayloadInspector.h"
 #include "CondFormats/Common/interface/BasicPayload.h"
 #include "CondCore/CondDB/interface/Time.h"
 #include "CondCore/CondDB/interface/PayloadReader.h"
@@ -8,9 +8,9 @@
 
 namespace {
 
-  class BasicPayloadPlot_data0 : public cond::payloadInspector::TrendPlot<cond::BasicPayload,float> {
+  class BasicPayload_data0 : public cond::payloadInspector::TrendPlot<cond::BasicPayload,float> {
   public:
-    BasicPayloadPlot_data0() : cond::payloadInspector::TrendPlot<cond::BasicPayload,float>( "Example Trend", "data0"){
+    BasicPayload_data0() : cond::payloadInspector::TrendPlot<cond::BasicPayload,float>( "Example Trend", "data0"){
     }
 
     float getFromPayload( cond::BasicPayload& payload ){
@@ -18,9 +18,9 @@ namespace {
     }
   };
 
-  class BasicPayloadPlot_data1 : public cond::payloadInspector::TrendPlot<cond::BasicPayload,float> {
+  class BasicPayload_data1 : public cond::payloadInspector::TrendPlot<cond::BasicPayload,float> {
   public:
-    BasicPayloadPlot_data1() : cond::payloadInspector::TrendPlot<cond::BasicPayload,float>( "Example Scatter", "data1"){
+    BasicPayload_data1() : cond::payloadInspector::TrendPlot<cond::BasicPayload,float>( "Example Scatter", "data1"){
     }
 
     float getFromPayload( cond::BasicPayload& payload ){
@@ -28,9 +28,9 @@ namespace {
     }
   };
 
-  class BasicPayloadPlot_data2 : public cond::payloadInspector::Histogram1D<cond::BasicPayload> {
+  class BasicPayload_data2 : public cond::payloadInspector::Histogram1D<cond::BasicPayload> {
   public:
-    BasicPayloadPlot_data2() : cond::payloadInspector::Histogram1D<cond::BasicPayload>( "Example Histo1d", "x",10,0,10){
+    BasicPayload_data2() : cond::payloadInspector::Histogram1D<cond::BasicPayload>( "Example Histo1d", "x",10,0,10){
       Base::setSingleIov( true );
     }
 
@@ -48,9 +48,9 @@ namespace {
     }
   };
 
-  class BasicPayloadPlot_data3 : public cond::payloadInspector::Histogram2D<cond::BasicPayload> {
+  class BasicPayload_data3 : public cond::payloadInspector::Histogram2D<cond::BasicPayload> {
   public:
-    BasicPayloadPlot_data3() : cond::payloadInspector::Histogram2D<cond::BasicPayload>( "Example Histo2d", "x",10,0,10,"y",10,0,10){
+    BasicPayload_data3() : cond::payloadInspector::Histogram2D<cond::BasicPayload>( "Example Histo2d", "x",10,0,10,"y",10,0,10){
       Base::setSingleIov( true );
     }
 
@@ -73,8 +73,8 @@ namespace {
 }
 
 PAYLOAD_INSPECTOR_MODULE( BasicPayload ){
-  PAYLOAD_INSPECTOR_CLASS( BasicPayloadPlot_data0 );
-  PAYLOAD_INSPECTOR_CLASS( BasicPayloadPlot_data1 );
-  PAYLOAD_INSPECTOR_CLASS( BasicPayloadPlot_data2 );
-  PAYLOAD_INSPECTOR_CLASS( BasicPayloadPlot_data3 );
+  PAYLOAD_INSPECTOR_CLASS( BasicPayload_data0 );
+  PAYLOAD_INSPECTOR_CLASS( BasicPayload_data1 );
+  PAYLOAD_INSPECTOR_CLASS( BasicPayload_data2 );
+  PAYLOAD_INSPECTOR_CLASS( BasicPayload_data3 );
 }

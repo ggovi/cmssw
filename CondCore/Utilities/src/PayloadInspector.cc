@@ -1,4 +1,4 @@
-#include "CondCore/Utilities/interface/PayloadInspectorPlot.h"
+#include "CondCore/Utilities/interface/PayloadInspector.h"
 #include <sstream>
 #include <iostream>
 

@@ -1,5 +1,5 @@
 #include "CondCore/Utilities/interface/PayloadInspectorModule.h"
-#include "CondCore/Utilities/interface/PayloadInspectorPlot.h"
+#include "CondCore/Utilities/interface/PayloadInspector.h"
 #include "CondCore/CondDB/interface/Time.h"
 
 #include "CondFormats/BeamSpotObjects/interface/BeamSpotObjects.h"
@@ -9,9 +9,9 @@
 
 namespace {
 
-  class BeamSpotPlot_x : public cond::payloadInspector::TrendPlot<BeamSpotObjects,std::pair<double,double> > {
+  class BeamSpot_x : public cond::payloadInspector::TrendPlot<BeamSpotObjects,std::pair<double,double> > {
   public:
-    BeamSpotPlot_x(): cond::payloadInspector::TrendPlot<BeamSpotObjects,std::pair<double,double> >( "x vs run number", "x"){
+    BeamSpot_x(): cond::payloadInspector::TrendPlot<BeamSpotObjects,std::pair<double,double> >( "x vs run number", "x"){
     }
 
     std::pair<double,double> getFromPayload( BeamSpotObjects& payload ){
@@ -19,9 +19,9 @@ namespace {
     }
   };
 
-  class BeamSpotPlot_y : public cond::payloadInspector::TrendPlot<BeamSpotObjects,std::pair<double,double> >{
+  class BeamSpot_y : public cond::payloadInspector::TrendPlot<BeamSpotObjects,std::pair<double,double> >{
   public:
-    BeamSpotPlot_y(): cond::payloadInspector::TrendPlot<BeamSpotObjects,std::pair<double,double> >( "y vs run number", "y"){
+    BeamSpot_y(): cond::payloadInspector::TrendPlot<BeamSpotObjects,std::pair<double,double> >( "y vs run number", "y"){
     }
 
     std::pair<double,double> getFromPayload( BeamSpotObjects& payload ){
@@ -29,9 +29,9 @@ namespace {
     }
   };
 
-  class BeamSpotPlot_xy : public cond::payloadInspector::ScatterPlot<BeamSpotObjects,double,double>{
+  class BeamSpot_xy : public cond::payloadInspector::ScatterPlot<BeamSpotObjects,double,double>{
   public:
-    BeamSpotPlot_xy(): cond::payloadInspector::ScatterPlot<BeamSpotObjects,double,double>("BeamSpot x vs y","x","y" ){
+    BeamSpot_xy(): cond::payloadInspector::ScatterPlot<BeamSpotObjects,double,double>("BeamSpot x vs y","x","y" ){
     }
 
     std::tuple<double,double> getFromPayload( BeamSpotObjects& payload ){
@@ -43,7 +43,7 @@ namespace {
 }
 
 PAYLOAD_INSPECTOR_MODULE( BeamSpot ){
-  PAYLOAD_INSPECTOR_CLASS( BeamSpotPlot_x );
-  PAYLOAD_INSPECTOR_CLASS( BeamSpotPlot_y );
-  PAYLOAD_INSPECTOR_CLASS( BeamSpotPlot_xy );
+  PAYLOAD_INSPECTOR_CLASS( BeamSpot_x );
+  PAYLOAD_INSPECTOR_CLASS( BeamSpot_y );
+  PAYLOAD_INSPECTOR_CLASS( BeamSpot_xy );
 }
