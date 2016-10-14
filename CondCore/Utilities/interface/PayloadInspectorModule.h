@@ -13,6 +13,7 @@
   .def("process",&cond::payloadInspector::PlotBase::process ) \
   .def("payloadType",&cond::payloadInspector::PlotBase::payloadType ) \
   .def("title",&cond::payloadInspector::PlotBase::title ) \
+  .def("isSingleIov",&cond::payloadInspector::PlotBase::isSingleIov ) \
   .def("data",&cond::payloadInspector::PlotBase::data ) \
   ;
 

@@ -15,69 +15,119 @@ namespace cond {
 
   namespace payloadInspector {
 
+    // Metadata dictionary
     struct PlotAnnotations {
-      std::string type = "";
-      std::string title = "";
-      std::string payloadType = "";
-      std::string info = "";
-      std::string xLabel = "";
-      std::string yLabel = "";
-      std::string zLabel = "";
+      static constexpr const char* const PLOT_TYPE_K = "type";
+      static constexpr const char* const TITLE_K = "title";
+      static constexpr const char* const PAYLOAD_TYPE_K = "payload_type";
+      static constexpr const char* const INFO_K = "info";
+      static constexpr const char* const XAXIS_K = "x_label";
+      static constexpr const char* const YAXIS_K = "y_label";
+      static constexpr const char* const ZAXIS_K = "z_label";
+      PlotAnnotations();
+      std::string get( const std::string& key ) const;
+      std::map<std::string,std::string> m;
+      bool singleIov = false;
     };
 
-    template <typename V> std::string serializeValue( const V& value ){
-      // maybe something more clever than this... maybe boost::lexical_cast<std::string> ?
+    // Serialize functions 
+    template <typename V> std::string serializeValue( const std::string& entryLabel, const V& value ){
+      // prototype
       std::stringstream ss;
-      ss << value;
+      ss << "\""<<entryLabel<<"\":\""<<value<<"\"";
       return ss.str();
     }
 
-    template <typename V> std::string serializeValue( const std::pair<V,V>& value ){
-      // only for testing, the real thing has to be implemented
+    template <typename V> std::string serializeValue( const std::string& entryLabel, const std::pair<V,V>& value ){
+      // prototype
       std::stringstream ss;
-      ss << value.first <<"+-"<<value.second;
+      ss << "\""<<entryLabel<<"\":\""<<value.first<<"\", \""<<entryLabel<<"_err\":\""<<value.second<<"\"";
       return ss.str();
     }
 
-    // Plot Serialize functions 
+    std::string serializeAnnotations( const PlotAnnotations& annotations ){
+      std::stringstream ss;
+      ss <<"\"annotations\": {";
+      bool first = true;
+      for( auto a: annotations.m ){
+        if ( !first ) ss <<",";
+	ss << "\""<<a.first<<"\":\"" << a.second <<"\"";
+        first = false;
+      } 
+      ss <<"}";
+      return ss.str();
+    }
+
     template <typename X,typename Y> std::string serialize( const PlotAnnotations& annotations, const std::vector<std::tuple<X,Y> >& data ){
-      // only for testing, the real thing has to be implemented
+      // prototype implementation...
       std::stringstream ss;
-      ss<<"Type: "<<annotations.type<<" title: "<<annotations.title<<std::endl;
+      ss << "{";
+      ss << serializeAnnotations( annotations );
+      ss <<",";
+      ss << "\"data\": [";
+      bool first = true;
       for ( auto d : data ){
-        ss <<" x: "<<serializeValue(std::get<0>(d))<<" y: "<<serializeValue(std::get<1>(d))<<std::endl;
+        if( !first ) ss <<",";
+        ss <<" { "<<serializeValue("x",std::get<0>(d))<<", "<<serializeValue( "y",std::get<1>( d))<<" }";
+        first = false;
       }
+      ss << "]";
+      ss << "}";
       return ss.str();
     }
 
     template <typename X,typename Y,typename Z> std::string serialize( const PlotAnnotations& annotations, const std::vector<std::tuple<X,Y,Z> >& data ){
-      // only for testing, to be implemented                                                                                                                                                                    
+      // prototype implementation...
       std::stringstream ss;
-      ss<<"Type: "<<annotations.type<<" title: "<<annotations.title<<std::endl;
+      ss << "{";
+      ss << serializeAnnotations( annotations );
+      ss <<",";
+      ss << "\"data\": [";
+      bool first = true;
       for ( auto d : data ){
-        ss <<" x: "<<serializeValue(std::get<0>(d))<<" y: "<<serializeValue(std::get<1>(d))<<" z: "<<serializeValue(std::get<2>(d))<<std::endl;
+        if( !first ) ss <<",";
+        ss <<" { "<<serializeValue("x",std::get<0>(d))<<", "<<serializeValue( "y",std::get<1>( d))<<", "<<serializeValue( "z",std::get<2>( d))<<" }";
+        first = false;
       }
+      ss << "]";
+      ss << "}";
       return ss.str();
     }
 
+    // Base class, factorizing the functions exposed in the python interface
     class PlotBase {
     public:
       PlotBase();
 
-      // return the type-name of the objects we handle, so the PayloadInspector can find corresponding tags
+      // required in the browser to find corresponding tags
       std::string payloadType() const;
 
+      // required in the browser
       std::string title() const; 
 
+      // required in the browser
       std::string type() const;
 
+      // required in the browser
+      bool isSingleIov() const;
+
+      // returns the json file with the plot data
       std::string data() const;
 
+      // triggers the processing producing the plot
       bool process( const std::string& connectionString, const boost::python::list& iovs );
 
+      // not exposed in python:
+      // called internally in process()
       virtual std::string processData( const boost::python::list& iovs );
 
-      cond::persistency::PayloadReader& databaseReader();
+      // to be set in order to limit the iov selection ( and processing ) to 1 iov
+      void setSingleIov( bool flag );
+
+      // access to the fetch function of the configured reader, to be used in the processData implementations
+      template <typename PayloadType> std::shared_ptr<PayloadType> fetchPayload( const cond::Hash& payloadHash ){
+	return m_dbReader.fetch<PayloadType>( payloadHash );
+      }
 
     protected:
 
@@ -95,11 +145,11 @@ namespace cond {
     public:
       Plot1D( const std::string& type, const std::string& title, const std::string xLabel, const std::string& yLabel ) : 
 	PlotBase(),m_plotData(){
-	m_plotAnnotations.type = type;
-        m_plotAnnotations.title = title;
-	m_plotAnnotations.xLabel = xLabel;
-	m_plotAnnotations.yLabel = yLabel;
-        m_plotAnnotations.payloadType = cond::demangledName( typeid(PayloadType) );
+	m_plotAnnotations.m[PlotAnnotations::PLOT_TYPE_K] = type;
+        m_plotAnnotations.m[PlotAnnotations::TITLE_K] = title;
+	m_plotAnnotations.m[PlotAnnotations::XAXIS_K] = xLabel;
+	m_plotAnnotations.m[PlotAnnotations::YAXIS_K] = yLabel;
+        m_plotAnnotations.m[PlotAnnotations::PAYLOAD_TYPE_K] = cond::demangledName( typeid(PayloadType) );
       }
 
       std::string serializeData(){
@@ -109,6 +159,10 @@ namespace cond {
       std::string processData( const boost::python::list& iovs ) override {
 	fill( iovs, m_plotData );
 	return serializeData();
+      }
+
+      std::shared_ptr<PayloadType> fetchPayload( const cond::Hash& payloadHash ){
+      	return PlotBase::fetchPayload<PayloadType>( payloadHash );
       }
 
       virtual bool fill( const boost::python::list& iovs, std::vector<std::tuple<X,Y> >& plotData  ) = 0;
@@ -120,12 +174,12 @@ namespace cond {
     public:
       Plot2D( const std::string& type, const std::string& title, const std::string xLabel, const std::string& yLabel, const std::string& zLabel ) :
         PlotBase(),m_plotData(){
-        m_plotAnnotations.type = type;
-        m_plotAnnotations.title = title;
-        m_plotAnnotations.xLabel = xLabel;
-        m_plotAnnotations.yLabel = yLabel;
-        m_plotAnnotations.zLabel = zLabel;
-        m_plotAnnotations.payloadType = cond::demangledName( typeid(PayloadType) );
+        m_plotAnnotations.m[PlotAnnotations::PLOT_TYPE_K] = type;
+        m_plotAnnotations.m[PlotAnnotations::TITLE_K] = title;
+        m_plotAnnotations.m[PlotAnnotations::XAXIS_K] = xLabel;
+        m_plotAnnotations.m[PlotAnnotations::YAXIS_K] = yLabel;
+        m_plotAnnotations.m[PlotAnnotations::ZAXIS_K] = zLabel;
+        m_plotAnnotations.m[PlotAnnotations::PAYLOAD_TYPE_K] = cond::demangledName( typeid(PayloadType) );
       }
 
       std::string serializeData(){
@@ -137,6 +191,10 @@ namespace cond {
 	return serializeData();
       }
 
+      std::shared_ptr<PayloadType> fetchPayload( const cond::Hash& payloadHash ){
+      	return PlotBase::fetchPayload<PayloadType>( payloadHash );
+      }
+
       virtual bool fill( const boost::python::list& iovs, std::vector<std::tuple<X,Y,Z> >& plotData ) = 0;
     protected:
       std::vector<std::tuple<X,Y,Z> > m_plotData;
@@ -144,16 +202,16 @@ namespace cond {
 
     template<typename PayloadType,typename Y> class TrendPlot : public Plot1D<PayloadType,unsigned long long,Y > {
     public:
+      typedef Plot1D<PayloadType,unsigned long long,Y > Base;
       // the x axis label will be overwritten by the plot rendering application
-      TrendPlot( const std::string& title, const std::string& yLabel ) :
-	Plot1D<PayloadType,unsigned long long,Y>( "Trend", title, "-" , yLabel ){
+      TrendPlot( const std::string& title, const std::string& yLabel ) : 
+	Base( "Trend", title, "-" , yLabel ){
       }
 
       bool fill( const boost::python::list& iovs, std::vector<std::tuple<unsigned long long,Y> >& plotData ) override {
-	cond::persistency::PayloadReader& reader = Plot1D<PayloadType,unsigned long long,Y>::databaseReader();
 	for( int i=0; i< len( iovs ); i++ ) {
 	  cond::Iov_t iov = boost::python::extract<cond::Iov_t>( iovs[i] );
-	  std::shared_ptr<PayloadType> payload = reader.fetch<PayloadType>( iov.payloadId );
+	  std::shared_ptr<PayloadType> payload = Base::fetchPayload( iov.payloadId );
           if( payload.get() ){
 	    Y value = getFromPayload( *payload );
 	    plotData.push_back( std::make_tuple(iov.since,value));
@@ -168,16 +226,16 @@ namespace cond {
 
     template<typename PayloadType, typename X, typename Y> class ScatterPlot : public Plot1D<PayloadType,X,Y > {
     public:
+      typedef Plot1D<PayloadType,X,Y > Base;
       // the x axis label will be overwritten by the plot rendering application
       ScatterPlot( const std::string& title, const std::string& xLabel, const std::string& yLabel ) :
-	Plot1D<PayloadType,X,Y>( "Scatter", title, xLabel , yLabel ){
+	Base( "Scatter", title, xLabel , yLabel ){
       }
 
       bool fill( const boost::python::list& iovs, std::vector<std::tuple<X,Y> >& plotData ) override {
-	cond::persistency::PayloadReader& reader = Plot1D<PayloadType,X,Y>::databaseReader();
 	for( int i=0; i< len( iovs ); i++ ) {
 	  cond::Iov_t iov = boost::python::extract<cond::Iov_t>( iovs[i] );
-	  std::shared_ptr<PayloadType> payload = reader.fetch<PayloadType>( iov.payloadId );
+	  std::shared_ptr<PayloadType> payload = Base::fetchPayload( iov.payloadId );
           if( payload.get() ){
 	    std::tuple<X,Y> value = getFromPayload( *payload );
 	    plotData.push_back( value );
@@ -218,10 +276,9 @@ namespace cond {
 
       // this one can ( and in general should ) be overridden - the implementation should use fillWithValue
       virtual bool fill( const boost::python::list& iovs, std::vector<std::tuple<float,float> >& plotData ) override {
-	cond::persistency::PayloadReader& reader = Base::databaseReader();
 	for( int i=0; i< len( iovs ); i++ ) {
 	  cond::Iov_t iov = boost::python::extract<cond::Iov_t>( iovs[i] );
-	  std::shared_ptr<PayloadType> payload = reader.fetch<PayloadType>( iov.payloadId );
+	  std::shared_ptr<PayloadType> payload = Base::fetchPayload( iov.payloadId );
           if( payload.get() ){
 	    float value = getFromPayload( *payload );
 	    fillWithValue( value );
@@ -275,10 +332,9 @@ namespace cond {
 
       // this one can ( and in general should ) be overridden - the implementation should use fillWithValue
       virtual bool fill( const boost::python::list& iovs, std::vector<std::tuple<float,float,float> >& plotData ) override {
-	cond::persistency::PayloadReader& reader = Base::databaseReader();
 	for( int i=0; i< len( iovs ); i++ ) {
 	  cond::Iov_t iov = boost::python::extract<cond::Iov_t>( iovs[i] );
-	  std::shared_ptr<PayloadType> payload = reader.fetch<PayloadType>( iov.payloadId );
+	  std::shared_ptr<PayloadType> payload = Base::fetchPayload( iov.payloadId );
           if( payload.get() ){
 	    std::tuple<float,float> value = getFromPayload( *payload );
 	    fillWithValue( std::get<0>(value),std::get<1>(value) );
