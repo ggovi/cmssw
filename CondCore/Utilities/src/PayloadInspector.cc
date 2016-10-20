@@ -15,6 +15,8 @@ namespace cond {
       return ret;
     } 
 
+    constexpr const char* const ModuleVersion::label;
+
     PlotBase::PlotBase():
         m_plotAnnotations(),m_data(""){
     }

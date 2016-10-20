@@ -9,9 +9,9 @@
 
 namespace {
 
-  class BeamSpot_x : public cond::payloadInspector::TrendPlot<BeamSpotObjects,std::pair<double,double> > {
+  class BeamSpot_x : public cond::payloadInspector::HistoryPlot<BeamSpotObjects,std::pair<double,double> > {
   public:
-    BeamSpot_x(): cond::payloadInspector::TrendPlot<BeamSpotObjects,std::pair<double,double> >( "x vs run number", "x"){
+    BeamSpot_x(): cond::payloadInspector::HistoryPlot<BeamSpotObjects,std::pair<double,double> >( "x vs run number", "x"){
     }
 
     std::pair<double,double> getFromPayload( BeamSpotObjects& payload ){
@@ -19,9 +19,9 @@ namespace {
     }
   };
 
-  class BeamSpot_y : public cond::payloadInspector::TrendPlot<BeamSpotObjects,std::pair<double,double> >{
+  class BeamSpot_y : public cond::payloadInspector::HistoryPlot<BeamSpotObjects,std::pair<double,double> >{
   public:
-    BeamSpot_y(): cond::payloadInspector::TrendPlot<BeamSpotObjects,std::pair<double,double> >( "y vs run number", "y"){
+    BeamSpot_y(): cond::payloadInspector::HistoryPlot<BeamSpotObjects,std::pair<double,double> >( "y vs run number", "y"){
     }
 
     std::pair<double,double> getFromPayload( BeamSpotObjects& payload ){

@@ -16,6 +16,3 @@
   .def("isSingleIov",&cond::payloadInspector::PlotBase::isSingleIov ) \
   .def("data",&cond::payloadInspector::PlotBase::data ) \
   ;
-
-#define PAYLOAD_INSPECTOR_FUNCTION( FUNCTION_NAME ) \
-def (STRINGIZE(PPCAT(plot_,FUNCTION_NAME)), FUNCTION_NAME)

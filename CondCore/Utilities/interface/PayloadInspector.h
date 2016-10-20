@@ -30,6 +30,8 @@ namespace cond {
       bool singleIov = false;
     };
 
+    static const char* const JSON_FORMAT_VERSION = "1.0";
+
     // Serialize functions 
     template <typename V> std::string serializeValue( const std::string& entryLabel, const V& value ){
       // prototype
@@ -47,6 +49,7 @@ namespace cond {
 
     std::string serializeAnnotations( const PlotAnnotations& annotations ){
       std::stringstream ss;
+      ss <<"\"version\": \""<<JSON_FORMAT_VERSION<<"\",";
       ss <<"\"annotations\": {";
       bool first = true;
       for( auto a: annotations.m ){
@@ -93,6 +96,10 @@ namespace cond {
       ss << "}";
       return ss.str();
     }
+
+    struct ModuleVersion {
+      static constexpr const char* const label = "1.0";
+    };
 
     // Base class, factorizing the functions exposed in the python interface
     class PlotBase {
@@ -200,12 +207,12 @@ namespace cond {
       std::vector<std::tuple<X,Y,Z> > m_plotData;
     };
 
-    template<typename PayloadType,typename Y> class TrendPlot : public Plot1D<PayloadType,unsigned long long,Y > {
+    template<typename PayloadType,typename Y> class HistoryPlot : public Plot1D<PayloadType,unsigned long long,Y > {
     public:
       typedef Plot1D<PayloadType,unsigned long long,Y > Base;
       // the x axis label will be overwritten by the plot rendering application
-      TrendPlot( const std::string& title, const std::string& yLabel ) : 
-	Base( "Trend", title, "-" , yLabel ){
+      HistoryPlot( const std::string& title, const std::string& yLabel ) : 
+	Base( "History", title, "iov_since" , yLabel ){
       }
 
       bool fill( const boost::python::list& iovs, std::vector<std::tuple<unsigned long long,Y> >& plotData ) override {

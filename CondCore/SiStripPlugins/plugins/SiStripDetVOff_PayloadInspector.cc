@@ -9,9 +9,9 @@
 
 namespace {
 
-  class SiStripDetVOff_LV : public cond::payloadInspector::TrendPlot<SiStripDetVOff,int>{
+  class SiStripDetVOff_LV : public cond::payloadInspector::HistoryPlot<SiStripDetVOff,int>{
   public:
-    SiStripDetVOff_LV(): cond::payloadInspector::TrendPlot<SiStripDetVOff,int >( "Nr of mod with LV OFF vs time", "nLVOff"){
+    SiStripDetVOff_LV(): cond::payloadInspector::HistoryPlot<SiStripDetVOff,int >( "Nr of mod with LV OFF vs time", "nLVOff"){
     }
 
     int getFromPayload( SiStripDetVOff& payload ){
@@ -20,9 +20,9 @@ namespace {
 
   };
 
-  class SiStripDetVOff_HV : public cond::payloadInspector::TrendPlot<SiStripDetVOff,int> {
+  class SiStripDetVOff_HV : public cond::payloadInspector::HistoryPlot<SiStripDetVOff,int> {
   public:
-    SiStripDetVOff_HV() : cond::payloadInspector::TrendPlot<SiStripDetVOff,int >( "Nr of mod with HV OFF vs time","nHVOff"){
+    SiStripDetVOff_HV() : cond::payloadInspector::HistoryPlot<SiStripDetVOff,int >( "Nr of mod with HV OFF vs time","nHVOff"){
     }
 
     int getFromPayload( SiStripDetVOff& payload ){

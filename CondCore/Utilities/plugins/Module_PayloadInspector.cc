@@ -1,7 +1,9 @@
 #include "CondCore/Utilities/interface/PayloadInspector.h"
 #include <boost/python.hpp>
 
-BOOST_PYTHON_MODULE( pluginPlotBase_PayloadInspector ) {
+BOOST_PYTHON_MODULE( pluginModule_PayloadInspector ) {
+  boost::python::class_< cond::payloadInspector::ModuleVersion >("ModuleVersion")
+  .def_readonly("label", &cond::payloadInspector::ModuleVersion::label );
   boost::python::class_< cond::payloadInspector::PlotBase > ( "PlotBase" )
   .def("process",&cond::payloadInspector::PlotBase::process )
   .def("payloadType",&cond::payloadInspector::PlotBase::payloadType )
