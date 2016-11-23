@@ -18,13 +18,13 @@ namespace {
     }
   };
 
-  class BasicPayload_data1 : public cond::payloadInspector::HistoryPlot<cond::BasicPayload,float> {
+  class BasicPayload_data1 : public cond::payloadInspector::ScatterPlot<cond::BasicPayload,float,float> {
   public:
-    BasicPayload_data1() : cond::payloadInspector::HistoryPlot<cond::BasicPayload,float>( "Example Scatter", "data1"){
+    BasicPayload_data1() : cond::payloadInspector::ScatterPlot<cond::BasicPayload,float,float>( "Example Scatter", "data0","data1"){
     }
 
-    float getFromPayload( cond::BasicPayload& payload ){
-      return payload.m_data1;
+    std::tuple<float,float> getFromPayload( cond::BasicPayload& payload ){
+      return std::make_tuple(payload.m_data0,payload.m_data1);
     }
   };
 

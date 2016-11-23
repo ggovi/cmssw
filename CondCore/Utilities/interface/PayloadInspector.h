@@ -2,7 +2,7 @@
 #define CondCore_Utilities_PayloadInspector_h
 
 #include "CondCore/CondDB/interface/Utils.h"
-#include "CondCore/CondDB/interface/PayloadReader.h"
+#include "CondCore/CondDB/interface/Session.h"
 #include <iostream>
 
 #include <string>
@@ -36,14 +36,14 @@ namespace cond {
     template <typename V> std::string serializeValue( const std::string& entryLabel, const V& value ){
       // prototype
       std::stringstream ss;
-      ss << "\""<<entryLabel<<"\":\""<<value<<"\"";
+      ss << "\""<<entryLabel<<"\":"<<value;
       return ss.str();
     }
 
     template <typename V> std::string serializeValue( const std::string& entryLabel, const std::pair<V,V>& value ){
       // prototype
       std::stringstream ss;
-      ss << "\""<<entryLabel<<"\":\""<<value.first<<"\", \""<<entryLabel<<"_err\":\""<<value.second<<"\"";
+      ss << "\""<<entryLabel<<"\":"<<value.first<<", "<<entryLabel<<"_err\":"<<value.second;
       return ss.str();
     }
 
@@ -122,18 +122,18 @@ namespace cond {
       std::string data() const;
 
       // triggers the processing producing the plot
-      bool process( const std::string& connectionString, const boost::python::list& iovs );
+      bool process( const std::string& connectionString, const std::string& tag, cond::Time_t begin, cond::Time_t end );
 
       // not exposed in python:
       // called internally in process()
-      virtual std::string processData( const boost::python::list& iovs );
+      virtual std::string processData( const std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs );
 
       // to be set in order to limit the iov selection ( and processing ) to 1 iov
       void setSingleIov( bool flag );
 
       // access to the fetch function of the configured reader, to be used in the processData implementations
       template <typename PayloadType> std::shared_ptr<PayloadType> fetchPayload( const cond::Hash& payloadHash ){
-	return m_dbReader.fetch<PayloadType>( payloadHash );
+	return m_dbSession.fetchPayload<PayloadType>( payloadHash );
       }
 
     protected:
@@ -142,15 +142,15 @@ namespace cond {
 
     private:
 
-     cond::persistency::PayloadReader m_dbReader;
+     cond::persistency::Session m_dbSession;
 
       std::string m_data = "";
     };
 
     // Concrete plot-types implementations
-    template <typename PayloadType, typename X, typename Y> class Plot1D : public PlotBase {
+    template <typename PayloadType, typename X, typename Y> class Plot2D : public PlotBase {
     public:
-      Plot1D( const std::string& type, const std::string& title, const std::string xLabel, const std::string& yLabel ) : 
+      Plot2D( const std::string& type, const std::string& title, const std::string xLabel, const std::string& yLabel ) : 
 	PlotBase(),m_plotData(){
 	m_plotAnnotations.m[PlotAnnotations::PLOT_TYPE_K] = type;
         m_plotAnnotations.m[PlotAnnotations::TITLE_K] = title;
@@ -163,7 +163,7 @@ namespace cond {
 	return serialize( m_plotAnnotations, m_plotData);
       }
 
-      std::string processData( const boost::python::list& iovs ) override {
+      std::string processData( const std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs ) override {
 	fill( iovs, m_plotData );
 	return serializeData();
       }
@@ -172,14 +172,14 @@ namespace cond {
       	return PlotBase::fetchPayload<PayloadType>( payloadHash );
       }
 
-      virtual bool fill( const boost::python::list& iovs, std::vector<std::tuple<X,Y> >& plotData  ) = 0;
+      virtual bool fill( const std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs, std::vector<std::tuple<X,Y> >& plotData  ) = 0;
     protected:
       std::vector<std::tuple<X,Y> > m_plotData;
     };
 
-    template <typename PayloadType, typename X, typename Y, typename Z> class Plot2D : public PlotBase {
+    template <typename PayloadType, typename X, typename Y, typename Z> class Plot3D : public PlotBase {
     public:
-      Plot2D( const std::string& type, const std::string& title, const std::string xLabel, const std::string& yLabel, const std::string& zLabel ) :
+      Plot3D( const std::string& type, const std::string& title, const std::string xLabel, const std::string& yLabel, const std::string& zLabel ) :
         PlotBase(),m_plotData(){
         m_plotAnnotations.m[PlotAnnotations::PLOT_TYPE_K] = type;
         m_plotAnnotations.m[PlotAnnotations::TITLE_K] = title;
@@ -193,7 +193,7 @@ namespace cond {
 	return serialize( m_plotAnnotations, m_plotData);
       }
 
-      std::string processData( const boost::python::list& iovs ) override {
+      std::string processData( const std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs ) override {
 	fill( iovs, m_plotData );
 	return serializeData();
       }
@@ -202,26 +202,25 @@ namespace cond {
       	return PlotBase::fetchPayload<PayloadType>( payloadHash );
       }
 
-      virtual bool fill( const boost::python::list& iovs, std::vector<std::tuple<X,Y,Z> >& plotData ) = 0;
+      virtual bool fill( const std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs, std::vector<std::tuple<X,Y,Z> >& plotData ) = 0;
     protected:
       std::vector<std::tuple<X,Y,Z> > m_plotData;
     };
 
-    template<typename PayloadType,typename Y> class HistoryPlot : public Plot1D<PayloadType,unsigned long long,Y > {
+    template<typename PayloadType,typename Y> class HistoryPlot : public Plot2D<PayloadType,unsigned long long,Y > {
     public:
-      typedef Plot1D<PayloadType,unsigned long long,Y > Base;
+      typedef Plot2D<PayloadType,unsigned long long,Y > Base;
       // the x axis label will be overwritten by the plot rendering application
       HistoryPlot( const std::string& title, const std::string& yLabel ) : 
 	Base( "History", title, "iov_since" , yLabel ){
       }
 
-      bool fill( const boost::python::list& iovs, std::vector<std::tuple<unsigned long long,Y> >& plotData ) override {
-	for( int i=0; i< len( iovs ); i++ ) {
-	  cond::Iov_t iov = boost::python::extract<cond::Iov_t>( iovs[i] );
-	  std::shared_ptr<PayloadType> payload = Base::fetchPayload( iov.payloadId );
+      bool fill( const std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs, std::vector<std::tuple<unsigned long long,Y> >& plotData ) override {
+	for( auto iov : iovs ) {
+	  std::shared_ptr<PayloadType> payload = Base::fetchPayload( std::get<1>(iov) );
           if( payload.get() ){
 	    Y value = getFromPayload( *payload );
-	    plotData.push_back( std::make_tuple(iov.since,value));
+	    plotData.push_back( std::make_tuple(std::get<0>(iov),value));
 	  }
 	}
 	return true;
@@ -231,18 +230,17 @@ namespace cond {
 
     };
 
-    template<typename PayloadType, typename X, typename Y> class ScatterPlot : public Plot1D<PayloadType,X,Y > {
+    template<typename PayloadType, typename X, typename Y> class ScatterPlot : public Plot2D<PayloadType,X,Y > {
     public:
-      typedef Plot1D<PayloadType,X,Y > Base;
+      typedef Plot2D<PayloadType,X,Y > Base;
       // the x axis label will be overwritten by the plot rendering application
       ScatterPlot( const std::string& title, const std::string& xLabel, const std::string& yLabel ) :
 	Base( "Scatter", title, xLabel , yLabel ){
       }
 
-      bool fill( const boost::python::list& iovs, std::vector<std::tuple<X,Y> >& plotData ) override {
-	for( int i=0; i< len( iovs ); i++ ) {
-	  cond::Iov_t iov = boost::python::extract<cond::Iov_t>( iovs[i] );
-	  std::shared_ptr<PayloadType> payload = Base::fetchPayload( iov.payloadId );
+      bool fill( const std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs, std::vector<std::tuple<X,Y> >& plotData ) override {
+	for( auto iov : iovs ) {
+	  std::shared_ptr<PayloadType> payload = Base::fetchPayload( std::get<1>(iov) );
           if( payload.get() ){
 	    std::tuple<X,Y> value = getFromPayload( *payload );
 	    plotData.push_back( value );
@@ -256,9 +254,9 @@ namespace cond {
     };
 
     //
-    template<typename PayloadType> class Histogram1D: public Plot1D<PayloadType,float,float > {
+    template<typename PayloadType> class Histogram1D: public Plot2D<PayloadType,float,float > {
     public:
-      typedef Plot1D<PayloadType,float,float > Base;
+      typedef Plot2D<PayloadType,float,float > Base;
       // naive implementation, essentially provided as an example...
       Histogram1D( const std::string& title, const std::string& xLabel, size_t nbins, float min, float max ):
 	Base( "Histo1D", title, xLabel , "entries" ),m_min(min),m_max(max){
@@ -274,7 +272,7 @@ namespace cond {
 
       // to be used to fill the histogram!
       void fillWithValue( float value, float weight=1 ){
-	// ignoring underflow/overflows ( they can be easily added - the total entries as well - in a more generic PlotAnnotation implementation )
+	// ignoring underflow/overflows ( they can be easily added - the total entries as well  )
         if( Base::m_plotData.size() && value < m_max && value >= m_min ){
 	  size_t ibin = (value-m_min)/m_binSize;
 	  std::get<1>(Base::m_plotData[ibin])+=weight;
@@ -282,10 +280,9 @@ namespace cond {
       }
 
       // this one can ( and in general should ) be overridden - the implementation should use fillWithValue
-      virtual bool fill( const boost::python::list& iovs, std::vector<std::tuple<float,float> >& plotData ) override {
-	for( int i=0; i< len( iovs ); i++ ) {
-	  cond::Iov_t iov = boost::python::extract<cond::Iov_t>( iovs[i] );
-	  std::shared_ptr<PayloadType> payload = Base::fetchPayload( iov.payloadId );
+      virtual bool fill( const std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs, std::vector<std::tuple<float,float> >& plotData ) override {
+	for( auto iov : iovs ) {
+	  std::shared_ptr<PayloadType> payload = Base::fetchPayload( std::get<1>(iov) );
           if( payload.get() ){
 	    float value = getFromPayload( *payload );
 	    fillWithValue( value );
@@ -306,9 +303,9 @@ namespace cond {
     };
 
     // 
-    template<typename PayloadType> class Histogram2D: public Plot2D<PayloadType,float,float,float > {
+    template<typename PayloadType> class Histogram2D: public Plot3D<PayloadType,float,float,float > {
     public:
-      typedef Plot2D<PayloadType,float,float,float > Base;
+      typedef Plot3D<PayloadType,float,float,float > Base;
       // naive implementation, essentially provided as an example...
       Histogram2D( const std::string& title, const std::string& xLabel, size_t nxbins, float xmin, float xmax, 
 		                             const std::string& yLabel, size_t nybins, float ymin, float ymax  ):
@@ -329,7 +326,7 @@ namespace cond {
 
       // to be used to fill the histogram!
       void fillWithValue( float xvalue, float yvalue, float weight=1 ){
-	// ignoring underflow/overflows ( they can be easily added - the total entries as well - in a more generic PlotAnnotation implementation )
+	// ignoring underflow/overflows ( they can be easily added - the total entries as well )
 	if( Base::m_plotData.size() && xvalue < m_xmax && xvalue >= m_xmin &&  yvalue < m_ymax && yvalue >= m_ymin ){
 	  size_t ixbin = (xvalue-m_xmin)/m_xbinSize;
 	  size_t iybin = (yvalue-m_ymin)/m_ybinSize;
@@ -338,10 +335,9 @@ namespace cond {
       }
 
       // this one can ( and in general should ) be overridden - the implementation should use fillWithValue
-      virtual bool fill( const boost::python::list& iovs, std::vector<std::tuple<float,float,float> >& plotData ) override {
-	for( int i=0; i< len( iovs ); i++ ) {
-	  cond::Iov_t iov = boost::python::extract<cond::Iov_t>( iovs[i] );
-	  std::shared_ptr<PayloadType> payload = Base::fetchPayload( iov.payloadId );
+      virtual bool fill( const std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs, std::vector<std::tuple<float,float,float> >& plotData ) override {
+	for( auto iov : iovs ) {
+	  std::shared_ptr<PayloadType> payload = Base::fetchPayload( std::get<1>(iov) );
           if( payload.get() ){
 	    std::tuple<float,float> value = getFromPayload( *payload );
 	    fillWithValue( std::get<0>(value),std::get<1>(value) );

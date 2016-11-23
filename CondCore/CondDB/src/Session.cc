@@ -150,6 +150,14 @@ namespace cond {
       m_session->iovSchema().iovTable().erase( tag );      
     }
 
+    bool Session::getIovRange( const std::string& tag, cond::Time_t begin, cond::Time_t end, 
+			    std::vector<std::tuple<cond::Time_t,cond::Hash> >& range ){
+      m_session->openIovDb();
+      return m_session->iovSchema().iovTable().getRange( tag, begin, end, range );
+    }
+    
+
+
     bool Session::existsGlobalTag( const std::string& name ){
       m_session->openGTDb();
       return m_session->gtSchema().gtTable().select( name );    

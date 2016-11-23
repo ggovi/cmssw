@@ -21,6 +21,8 @@
 #include "CondCore/CondDB/interface/Types.h"
 #include "CondCore/CondDB/interface/Utils.h"
 // 
+//#include <vector>
+//#include <tuple>
 // temporarely
 
 // TO BE REMOVED AFTER THE TRANSITION
@@ -124,6 +126,11 @@ namespace cond {
       // update an existing iov sequence with the specified tag.
       // timeType and payloadType can't be modified.
       IOVEditor editIov( const std::string& tag );
+
+      // retrieves an IOV range. Peforms a query at every call.
+      bool getIovRange( const std::string& tag, 
+			cond::Time_t begin, cond::Time_t end, 
+			std::vector<std::tuple<cond::Time_t,cond::Hash> >& range );
       
       // functions to store a payload in the database. return the identifier of the item in the db. 
       template <typename T> cond::Hash storePayload( const T& payload, 

@@ -280,6 +280,26 @@ namespace cond {
       return false;
     }
 
+    bool IOV::Table::getRange( const std::string& tag, cond::Time_t begin, cond::Time_t end, 
+			       std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs ){
+      Query< MAX_SINCE > q0( m_schema );
+      q0.addCondition<TAG_NAME>( tag );
+      q0.addCondition<SINCE>( begin, "<=");
+      cond::Time_t lower_since = 0;
+      for( auto row: q0 ){
+	lower_since = std::get<0>( row );
+      }
+      if ( !lower_since ) return false;
+      Query< SINCE, PAYLOAD_HASH > q1( m_schema );
+      q1.addCondition<TAG_NAME>( tag );
+      q1.addCondition<SINCE>( lower_since, ">=");
+      q1.addCondition<SINCE>( end, "<=");
+      for( auto row: q1 ){
+        iovs.push_back( row );
+      }
+      return iovs.size();
+    }
+
     void IOV::Table::insertOne( const std::string& tag, 
 				cond::Time_t since, 
 				cond::Hash payloadHash, 

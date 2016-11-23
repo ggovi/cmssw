@@ -1,4 +1,6 @@
 #include "CondCore/Utilities/interface/PayloadInspector.h"
+#include "CondCore/CondDB/interface/ConnectionPool.h"
+
 #include <sstream>
 #include <iostream>
 
@@ -41,15 +43,19 @@ namespace cond {
       return m_data;
     }
 
-    bool PlotBase::process( const std::string& connectionString, const boost::python::list& iovs ){
-      m_dbReader.open( connectionString ); 
+    bool PlotBase::process( const std::string& connectionString,  const std::string& tag, cond::Time_t begin, cond::Time_t end ){
+      cond::persistency::ConnectionPool connection;
+      m_dbSession = connection.createSession( connectionString );
+      m_dbSession.transaction().start();
+      std::vector<std::tuple<cond::Time_t,cond::Hash> > iovs;
+      m_dbSession.getIovRange( tag, begin, end, iovs );
       m_data = processData( iovs );
-      m_dbReader.close();
+      m_dbSession.transaction().commit();
       // fixme...
       return true;
     }
 
-    std::string PlotBase::processData( const boost::python::list& ){
+    std::string PlotBase::processData( const std::vector<std::tuple<cond::Time_t,cond::Hash> >& ){
       return ""; 
     }
 
