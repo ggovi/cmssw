@@ -43,7 +43,7 @@ namespace cond {
     template <typename V> std::string serializeValue( const std::string& entryLabel, const std::pair<V,V>& value ){
       // prototype
       std::stringstream ss;
-      ss << "\""<<entryLabel<<"\":"<<value.first<<", "<<entryLabel<<"_err\":"<<value.second;
+      ss << "\""<<entryLabel<<"\":"<<value.first<<", \""<<entryLabel<<"_err\":"<<value.second;
       return ss.str();
     }
 
