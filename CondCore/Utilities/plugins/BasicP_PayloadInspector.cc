@@ -34,10 +34,9 @@ namespace {
       Base::setSingleIov( true );
     }
 
-    bool fill( const boost::python::list& iovs, std::vector<std::tuple<float,float> >& plotData ){
-      for( int i=0; i< len( iovs ); i++ ) {
-	cond::Iov_t iov = boost::python::extract<cond::Iov_t>( iovs[i] );
-	std::shared_ptr<cond::BasicPayload> payload = Base::fetchPayload( iov.payloadId );
+    bool fill( const std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs, std::vector<std::tuple<float,float> >& plotData ){
+      for( auto iov : iovs ) {
+	std::shared_ptr<cond::BasicPayload> payload = Base::fetchPayload( std::get<1>(iov) );
 	if( payload.get() ){
 	  for( size_t j=0;j<100;j++ ) {
 	    fillWithValue( j, payload->m_vec[j] );
@@ -54,10 +53,9 @@ namespace {
       Base::setSingleIov( true );
     }
 
-    bool fill( const boost::python::list& iovs, std::vector<std::tuple<float,float,float> >& plotData ){
-      for( int i=0; i< len( iovs ); i++ ) {
-	cond::Iov_t iov = boost::python::extract<cond::Iov_t>( iovs[i] );
-	std::shared_ptr<cond::BasicPayload> payload = Base::fetchPayload( iov.payloadId );
+    bool fill( const std::vector<std::tuple<cond::Time_t,cond::Hash> >& iovs, std::vector<std::tuple<float,float,float> >& plotData ){
+      for( auto iov : iovs ) {
+	std::shared_ptr<cond::BasicPayload> payload = Base::fetchPayload( std::get<1>(iov) );
 	if( payload.get() ){
           for( size_t i=0;i<10;i++ )
 	    for( size_t j=0;j<10;j++ ) {
