@@ -16,6 +16,7 @@
 #include "CondCore/CondDB/interface/IOVEditor.h"
 #include "CondCore/CondDB/interface/GTProxy.h"
 #include "CondCore/CondDB/interface/GTEditor.h"
+#include "CondCore/CondDB/interface/RunInfoProxy.h"
 #include "CondCore/CondDB/interface/Binary.h"
 #include "CondCore/CondDB/interface/Serialization.h"
 #include "CondCore/CondDB/interface/Types.h"
@@ -160,6 +161,10 @@ namespace cond {
       GTProxy readGlobalTag( const std::string& name, 
 			     const std::string& preFix, 
 			     const std::string& postFix  );
+
+      // runinfo access
+      RunInfoProxy getRunInfo( cond::Time_t start, cond::Time_t end );
+
     public:
       
       std::string connectionString();

@@ -43,7 +43,9 @@ namespace cond {
       return m_data;
     }
 
-    bool PlotBase::process( const std::string& connectionString,  const std::string& tag, cond::Time_t begin, cond::Time_t end ){
+    bool PlotBase::process( const std::string& connectionString,  const std::string& tag, const std::string& timeType, cond::Time_t begin, cond::Time_t end ){
+      init();
+      m_tagTimeType = cond::time::timeTypeFromName(timeType);
       cond::persistency::ConnectionPool connection;
       m_dbSession = connection.createSession( connectionString );
       m_dbSession.transaction().start();
@@ -55,12 +57,23 @@ namespace cond {
       return true;
     }
 
+    void PlotBase::init(){
+    }
+
     std::string PlotBase::processData( const std::vector<std::tuple<cond::Time_t,cond::Hash> >& ){
       return ""; 
     }
 
     void PlotBase::setSingleIov( bool flag ) {
       m_plotAnnotations.singleIov = flag;
+    }
+
+    cond::TimeType PlotBase::tagTimeType() const {
+      return m_tagTimeType;
+    }
+
+    cond::persistency::Session PlotBase::dbSession(){
+      return m_dbSession;
     }
 
   }

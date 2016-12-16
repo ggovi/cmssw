@@ -208,6 +208,14 @@ namespace cond {
       return m_session->iovSchema().payloadTable().select( payloadHash, payloadType, payloadData, streamerInfoData );
     }
 
+    RunInfoProxy Session::getRunInfo( cond::Time_t start, cond::Time_t end ){
+      if(!m_session->transaction.get()) 
+	throwException( "The transaction is not active.","Session::getRunInfo" );
+      RunInfoProxy proxy( m_session );
+      proxy.load( start, end );
+      return proxy;
+    }
+
     std::string Session::connectionString(){
       return m_session->connectionString;
     }
