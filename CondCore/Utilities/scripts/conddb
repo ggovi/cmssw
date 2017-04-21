@@ -278,7 +278,8 @@ def _connect(db, init, read_only, args):
 
         if connection.is_official:
             if args.force:
-                logging.warning('You are going to edit an official database. If you are not one of the Offline DB experts but have access to the password for other reasons, please stop now.')
+                if not args.yes:
+                    logging.warning('You are going to edit an official database. If you are not one of the Offline DB experts but have access to the password for other reasons, please stop now.')
             else:
                 raise Exception('Editing official databases is forbidden. Use the official DropBox to upload conditions. If you need a special intervention on the database, see the contact help: %s' % conddb.contact_help)
         # for sqlite we trigger the implicit schema creation
@@ -1190,7 +1191,7 @@ def _copy_payload( args, copyTime, session1, session2, payloadHash ):
     Payload1 = session1.get_dbtype(conddb.Payload)
     Payload2 = session2.get_dbtype(conddb.Payload)
     if _exists(session2, Payload2.hash, payloadHash):
-        logging.info('Skipping copy of payload %s to %s since it already exists...', str_db_object(args.db, payloadHash), str_db_object(args.destdb, payloadHash))
+        logging.debug('Skipping copy of payload %s to %s since it already exists...', str_db_object(args.db, payloadHash), str_db_object(args.destdb, payloadHash))
         return False
     else:
         logging.info('Copying payload %s to %s ...', str_db_object(args.db, payloadHash), str_db_object(args.destdb, payloadHash))
@@ -1404,6 +1405,8 @@ def _copy_tag(args, copyTime, session1, session2, first, second, fromIOV=None, t
         logging.debug('Copying IOV %s -> %s...', k, v)
         session2.add(IOV2(tag_name=second,since=k,insertion_time=copyTime,payload_hash=v))
         niovs += 1
+    if not niovs==0:
+        logging.info('%s iov(s) copied.',niovs)
     return niovs
 
 def copy(args):
@@ -1444,7 +1447,7 @@ def copy(args):
         niovs = _copy_tag(args, copyTime, session1, session2, args.first, args.second, getattr(args, 'from'), args.to)
 
         if niovs!=0:
-            #_confirm_changes(args)
+            _confirm_changes(args)
             note = args.note
             if args.force and args.note is None:
                 note = _get_user_note(args,'Force edit mode requires an editing note to be provided: ')
