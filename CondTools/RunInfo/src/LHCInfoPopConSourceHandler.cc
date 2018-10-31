@@ -420,6 +420,7 @@ namespace LHCInfoImpl {
      coral::Attribute const & dipTimeAttribute =  bunchConf1Cursor.currentRow()[ std::string( "DIPTIME" ) ];
      coral::Attribute const & bunchConf1Attribute =  bunchConf1Cursor.currentRow()[ std::string( "BUCKET" ) ];
      if( !dipTimeAttribute.isNull() and !bunchConf1Attribute.isNull() ){
+       ret = true;
        cond::Time_t dipTime = cond::time::from_boost( dipTimeAttribute.data<coral::TimeStamp>().time() );
        // assuming only one sample has been selected...
        unsigned short slot = ( bunchConf1Attribute.data<unsigned short>() - 1 ) / 10 + 1;

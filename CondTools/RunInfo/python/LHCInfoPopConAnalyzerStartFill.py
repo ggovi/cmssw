@@ -14,7 +14,7 @@ if socket.getfqdn().find('.cms') != -1:
 
 options = VarParsing.VarParsing()
 options.register( 'destinationConnection'
-                , 'sqlite_file:lhcinfo_pop_test.db' #default value
+                , 'sqlite_file:LHCInfo_PopCon_start_test.db' #default value
                 , VarParsing.VarParsing.multiplicity.singleton
                 , VarParsing.VarParsing.varType.string
                 , "Connection string to the DB where payloads will be possibly written."
@@ -28,7 +28,7 @@ options.register( 'targetConnection'
                      it is the DB where payloads should be finally uploaded."""
                   )
 options.register( 'tag'
-                , 'LHCInfo_PopCon_start_test'
+                , 'LHCInfoStartFill_prompt_v0'
                 , VarParsing.VarParsing.multiplicity.singleton
                 , VarParsing.VarParsing.varType.string
                 , "Tag written in destinationConnection and finally appended in targetConnection."
@@ -70,7 +70,7 @@ process.Test1 = cms.EDAnalyzer("LHCInfoPopConAnalyzer",
                                record = cms.string('LHCInfoRcd'),
                                name = cms.untracked.string('LHCInfo'),
                                Source = cms.PSet(fill = cms.untracked.uint32(6417),
-                                   startTime = cms.untracked.string('2018-04-01 00:00:00.000'),
+                                   startTime = cms.untracked.string('2018-09-04 00:00:00.000'),
                                    #endTime = cms.untracked.string('2018-03-25 05:00:00.000'),
                                    samplingInterval = cms.untracked.uint32( 600 ),
                                    endFill = cms.untracked.bool(False),
