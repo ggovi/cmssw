@@ -30,8 +30,9 @@ namespace cond {
       PlotAnnotations();
       std::string get(const std::string& key) const;
       std::map<std::string, std::string> m;
-      bool singleIov = false;
+      int ntags = 1;
       bool twoTags = false;
+      bool singleIov = false;
     };
 
     static const char* const JSON_FORMAT_VERSION = "1.0";
@@ -156,10 +157,13 @@ namespace cond {
       std::string type() const;
 
       // required in the browser
-      bool isSingleIov() const;
+      unsigned int ntags() const;
+  
+      //TBRemoved
+      bool isTwoTags() const;
 
       // required in the browser
-      bool isTwoTags() const;
+      bool isSingleIov() const;
 
       // required in the browser
       boost::python::list inputParams() const;
@@ -172,17 +176,17 @@ namespace cond {
 
       // triggers the processing producing the plot
       bool process(const std::string& connectionString,
-                   const std::string& tag,
-                   const std::string& timeType,
-                   cond::Time_t begin,
-                   cond::Time_t end);
+		   const boost::python::list& tagsWithTimeBoundaries );
+      //             const boost::python::list& tags,
+      //             cond::Time_t begin,
+      //             cond::Time_t end);
       //bool process( const std::string& connectionString, const std::string& tag, cond::Time_t begin, cond::Time_t end );
 
-      bool processTwoTags(const std::string& connectionString,
-                          const std::string& tag0,
-                          const std::string& tag1,
-                          cond::Time_t time0,
-                          cond::Time_t time1);
+      //bool processTwoTags(const std::string& connectionString,
+      //                    const std::string& tag0,
+      //                    const std::string& tag1,
+      //                    cond::Time_t time0,
+      //                    cond::Time_t time1);
 
       // not exposed in python:
       // called internally in process()
@@ -191,6 +195,7 @@ namespace cond {
       // not exposed in python:
       // called internally in process()
       virtual std::string processData(const std::vector<std::tuple<cond::Time_t, cond::Hash> >& iovs);
+      //virtual std::string processData();
 
       // to be set in order to limit the iov selection ( and processing ) to 1 iov
       void setSingleIov(bool flag);
@@ -207,39 +212,64 @@ namespace cond {
 
       cond::Tag_t getTagInfo(const std::string& tag);
 
+      const std::map<std::string,std::vector<std::tuple<cond::Time_t, cond::Hash> > > loadedTags() const; 
       const std::map<std::string,std::string>& inputParamValues() const;
 
       // access to the underlying db session
       cond::persistency::Session dbSession();
 
     protected:
+      // possibly shared with the derived classes
       PlotAnnotations m_plotAnnotations;
-      std::string m_tag0 = "";
-      std::string m_tag1 = "";
       std::set<std::string> m_inputParams;
+      std::map<std::string,std::vector<std::tuple<cond::Time_t, cond::Hash> > > m_tags;
+      std::map<std::string,std::string> m_inputParamValues;
+      // TOBRem
+      std::string m_tag0, m_tag1;
 
     private:
+      // this stuff should not be modified...
       cond::persistency::Session m_dbSession;
-      //cond::TimeType m_tagTimeType;
-
       std::string m_data = "";
-      std::map<std::string,std::string> m_inputParamValues;
     };
 
-    // Concrete plot-types implementations
-    template <typename PayloadType, typename X, typename Y>
-    class Plot2D : public PlotBase {
+    enum IOVPolicy { MULTIIOV=0, SINGLEIOV=1 };
+    template <IOVPolicy IOVM, int NTAGS>
+    class PlotImpl : public PlotBase {
     public:
-      Plot2D(const std::string& type, const std::string& title, const std::string xLabel, const std::string& yLabel)
-          : PlotBase(), m_plotData() {
+      PlotImpl(const std::string& type, const std::string& title):
+	PlotBase(){
         m_plotAnnotations.m[PlotAnnotations::PLOT_TYPE_K] = type;
         m_plotAnnotations.m[PlotAnnotations::TITLE_K] = title;
-        m_plotAnnotations.m[PlotAnnotations::XAXIS_K] = xLabel;
-        m_plotAnnotations.m[PlotAnnotations::YAXIS_K] = yLabel;
-        m_plotAnnotations.m[PlotAnnotations::PAYLOAD_TYPE_K] = cond::demangledName(typeid(PayloadType));
+	m_plotAnnotations.ntags = NTAGS;
+	m_plotAnnotations.singleIov = (IOVM==SINGLEIOV);
+      }
+      ~PlotImpl() override = default;
+      // TBI
+      std::string processData(const std::vector<std::tuple<cond::Time_t, cond::Hash> >& iovs) override {
+        fill(iovs);
+        //return serializeData();
+	return "";
+      }
+      //virtual bool fill() { ;
+      virtual bool fill(const std::vector<std::tuple<cond::Time_t, cond::Hash> >& iovs) = 0;
+    }; 
+
+    // Concrete plot-types implementations
+    template <typename PayloadType, typename X, typename Y, IOVPolicy IOVM=MULTIIOV, int NTAGS=1>
+    class Plot2D : public PlotImpl<IOVM,NTAGS> {
+    public:
+      typedef PlotImpl<IOVM,NTAGS> Base;
+      Plot2D(const std::string& type, const std::string& title, const std::string xLabel, const std::string& yLabel)
+	: Base(type,title), m_plotData() {
+        //m_plotAnnotations.m[PlotAnnotations::PLOT_TYPE_K] = type;
+        //m_plotAnnotations.m[PlotAnnotations::TITLE_K] = title;
+	Base::m_plotAnnotations.m[PlotAnnotations::XAXIS_K] = xLabel;
+        Base::m_plotAnnotations.m[PlotAnnotations::YAXIS_K] = yLabel;
+        Base::m_plotAnnotations.m[PlotAnnotations::PAYLOAD_TYPE_K] = cond::demangledName(typeid(PayloadType));
       }
       ~Plot2D() override = default;
-      std::string serializeData() { return serialize(m_plotAnnotations, m_plotData); }
+      std::string serializeData() { return serialize(Base::m_plotAnnotations, m_plotData); }
 
       std::string processData(const std::vector<std::tuple<cond::Time_t, cond::Hash> >& iovs) override {
         fill(iovs);
@@ -256,24 +286,25 @@ namespace cond {
       std::vector<std::tuple<X, Y> > m_plotData;
     };
 
-    template <typename PayloadType, typename X, typename Y, typename Z>
-    class Plot3D : public PlotBase {
+    template <typename PayloadType, typename X, typename Y, typename Z, IOVPolicy IOVM=MULTIIOV, int NTAGS=1>
+    class Plot3D : public PlotImpl<IOVM,NTAGS> {
     public:
+      typedef PlotImpl<IOVM,NTAGS> Base;
       Plot3D(const std::string& type,
              const std::string& title,
              const std::string xLabel,
              const std::string& yLabel,
              const std::string& zLabel)
-          : PlotBase(), m_plotData() {
-        m_plotAnnotations.m[PlotAnnotations::PLOT_TYPE_K] = type;
-        m_plotAnnotations.m[PlotAnnotations::TITLE_K] = title;
-        m_plotAnnotations.m[PlotAnnotations::XAXIS_K] = xLabel;
-        m_plotAnnotations.m[PlotAnnotations::YAXIS_K] = yLabel;
-        m_plotAnnotations.m[PlotAnnotations::ZAXIS_K] = zLabel;
-        m_plotAnnotations.m[PlotAnnotations::PAYLOAD_TYPE_K] = cond::demangledName(typeid(PayloadType));
+          : Base(type,title), m_plotData() {
+        //m_plotAnnotations.m[PlotAnnotations::PLOT_TYPE_K] = type;
+        //m_plotAnnotations.m[PlotAnnotations::TITLE_K] = title;
+        Base::m_plotAnnotations.m[PlotAnnotations::XAXIS_K] = xLabel;
+        Base::m_plotAnnotations.m[PlotAnnotations::YAXIS_K] = yLabel;
+        Base::m_plotAnnotations.m[PlotAnnotations::ZAXIS_K] = zLabel;
+        Base::m_plotAnnotations.m[PlotAnnotations::PAYLOAD_TYPE_K] = cond::demangledName(typeid(PayloadType));
       }
       ~Plot3D() override = default;
-      std::string serializeData() { return serialize(m_plotAnnotations, m_plotData); }
+      std::string serializeData() { return serialize(Base::m_plotAnnotations, m_plotData); }
 
       std::string processData(const std::vector<std::tuple<cond::Time_t, cond::Hash> >& iovs) override {
         fill(iovs);
@@ -606,18 +637,19 @@ namespace cond {
     };
 
     //
-    template <typename PayloadType>
-    class PlotImage : public PlotBase {
+    template <typename PayloadType, IOVPolicy IOVM=MULTIIOV,int NTAGS=1>
+    class PlotImage : public PlotImpl<IOVM,NTAGS> {
     public:
-      explicit PlotImage(const std::string& title) : PlotBase() {
-        m_plotAnnotations.m[PlotAnnotations::PLOT_TYPE_K] = "Image";
-        m_plotAnnotations.m[PlotAnnotations::TITLE_K] = title;
+      typedef PlotImpl<IOVM,NTAGS> Base;
+      explicit PlotImage(const std::string& title) : Base("Image", title) {
+        //m_plotAnnotations.m[PlotAnnotations::PLOT_TYPE_K] = "Image";
+        //m_plotAnnotations.m[PlotAnnotations::TITLE_K] = title;
         std::string payloadTypeName = cond::demangledName(typeid(PayloadType));
-        m_plotAnnotations.m[PlotAnnotations::PAYLOAD_TYPE_K] = payloadTypeName;
+	Base::m_plotAnnotations.m[PlotAnnotations::PAYLOAD_TYPE_K] = payloadTypeName;
         m_imageFileName = boost::lexical_cast<std::string>((boost::uuids::random_generator())()) + ".png";
       }
 
-      std::string serializeData() { return serialize(m_plotAnnotations, m_imageFileName); }
+      std::string serializeData() { return serialize(Base::m_plotAnnotations, m_imageFileName); }
 
       std::string processData(const std::vector<std::tuple<cond::Time_t, cond::Hash> >& iovs) override {
         fill(iovs);

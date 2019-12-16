@@ -32,6 +32,6 @@ int main(int argc, char** argv) {
   std::cout << "## PNG Histo" << std::endl;
 
   BasicPayload_data6 histo1;
-  histo1.process(connectionString, tag, runTimeType, since, since);
+  //histo1.process(connectionString, tag, runTimeType, since, since);
   std::cout << histo1.data() << std::endl;
 }

@@ -24,7 +24,7 @@ namespace cond {
 
     constexpr const char* const ModuleVersion::label;
 
-    PlotBase::PlotBase() : m_plotAnnotations(), m_inputParams(), m_data(""), m_inputParamValues(){}
+    PlotBase::PlotBase() : m_plotAnnotations(), m_inputParams(), m_tags(), m_inputParamValues(), m_data(""){}
 
     void PlotBase::addInputParam( const std::string& paramName ){
       // maybe add a check for existing params - returning an Exception when found...
@@ -61,10 +61,7 @@ namespace cond {
     std::string PlotBase::data() const { return m_data; }
 
     bool PlotBase::process(const std::string& connectionString,
-                           const std::string& tag,
-                           const std::string&,
-                           cond::Time_t begin,
-                           cond::Time_t end) {
+                           const boost::python::list& tagsWithTimeBoundaries ){
       init();
 
       std::vector<edm::ParameterSet> psets;
@@ -73,51 +70,34 @@ namespace cond {
       psets.push_back(pSet);
       static const edm::ServiceToken services(edm::ServiceRegistry::createSet(psets));
       static const edm::ServiceRegistry::Operate operate(services);
-
-      m_tag0 = tag;
-      //m_tagTimeType = cond::time::timeTypeFromName(timeType);
-      cond::persistency::ConnectionPool connection;
-      m_dbSession = connection.createSession(connectionString);
-      m_dbSession.transaction().start();
-      std::vector<std::tuple<cond::Time_t, cond::Hash> > iovs;
-      m_dbSession.getIovRange(tag, begin, end, iovs);
-      m_data = processData(iovs);
-      m_dbSession.transaction().commit();
-      // fixme...
-      return true;
-    }
-
-    bool PlotBase::processTwoTags(const std::string& connectionString,
-                                  const std::string& tag0,
-                                  const std::string& tag1,
-                                  cond::Time_t time0,
-                                  cond::Time_t time1) {
-      init();
-
-      std::vector<edm::ParameterSet> psets;
-      edm::ParameterSet pSet;
-      pSet.addParameter("@service_type", std::string("SiteLocalConfigService"));
-      psets.push_back(pSet);
-      static const edm::ServiceToken services(edm::ServiceRegistry::createSet(psets));
-      static const edm::ServiceRegistry::Operate operate(services);
-
-      m_tag0 = tag0;
-      m_tag1 = tag1;
-      cond::persistency::ConnectionPool connection;
-      m_dbSession = connection.createSession(connectionString);
-      m_dbSession.transaction().start();
-      std::vector<std::tuple<cond::Time_t, cond::Hash> > iovs;
-      m_dbSession.getIovRange(tag0, time0, time0, iovs);
-      m_dbSession.getIovRange(tag1, time1, time1, iovs);
-      m_data = processData(iovs);
-      m_dbSession.transaction().commit();
-      // fixme...
-      return true;
+      
+      bool ret = false;
+      size_t nt = boost::python::len( tagsWithTimeBoundaries );
+      if( nt ){
+	cond::persistency::ConnectionPool connection;
+	m_dbSession = connection.createSession(connectionString);
+	m_dbSession.transaction().start();
+	for(size_t i=0;i<nt; i++ ){
+	  boost::python::tuple tag = boost::python::extract<boost::python::tuple>( tagsWithTimeBoundaries[i] );
+	  std::string tagName = boost::python::extract<std::string>( tag[0] );
+	  cond::Time_t time0 = boost::python::extract<cond::Time_t>( tag[1] );
+	  cond::Time_t time1 = boost::python::extract<cond::Time_t>( tag[2] );
+	  std::pair<std::string,std::vector<std::tuple<cond::Time_t, cond::Hash> > > tagWithIovs;
+	  auto ret = m_tags.insert( tagWithIovs );
+	  m_dbSession.getIovRange(tagName, time0, time1, ret.first->second );
+	}
+	// ############## FIXME just to make it compile
+        std::vector<std::tuple<cond::Time_t, cond::Hash> > dummy;
+	m_data = processData(dummy);
+        m_dbSession.transaction().commit();
+	ret = true;
+      }
+      return ret;
     }
 
     void PlotBase::init() {}
 
-    std::string PlotBase::processData(const std::vector<std::tuple<cond::Time_t, cond::Hash> >&) { return ""; }
+    std::string PlotBase::processData(const std::vector<std::tuple<cond::Time_t, cond::Hash> >& iovs) { return ""; }
 
     void PlotBase::setSingleIov(bool flag) { m_plotAnnotations.singleIov = flag; }
 
@@ -131,6 +111,10 @@ namespace cond {
       cond::Tag_t info;
       m_dbSession.getTagInfo(tag, info);
       return info;
+    }
+
+    const std::map<std::string,std::vector<std::tuple<cond::Time_t, cond::Hash> > > PlotBase::loadedTags() const {
+      return m_tags;
     }
 
     const std::map<std::string,std::string>& PlotBase::inputParamValues() const {
