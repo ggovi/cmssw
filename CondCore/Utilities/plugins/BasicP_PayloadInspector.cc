@@ -117,7 +117,7 @@ class BasicPayload_data0_withInput : public cond::payloadInspector::HistoryPlot<
     }
   };
 
-  class BasicPayload_data6 : public cond::payloadInspector::PlotImage<cond::BasicPayload> {
+  class BasicPayload_data6 : public cond::payloadInspector::PlotImage<cond::BasicPayload,1,cond::payloadInspector::SINGLEIOV> {
   public:
     BasicPayload_data6() : cond::payloadInspector::PlotImage<cond::BasicPayload>("Example delivery picture") {
       setSingleIov(true);
