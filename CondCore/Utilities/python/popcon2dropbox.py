@@ -128,6 +128,7 @@ def copy( args, dbName ):
     destDb = args.destDb
     destTag = args.destTag
     comment = args.comment
+    verbose = args.verbose
 
     datef = datetime.now()
     destMap = { "oracle://cms_orcoff_prep/cms_conditions": "oradev", "oracle://cms_orcon_prod/cms_conditions": "onlineorapro"  }
@@ -141,7 +142,11 @@ def copy( args, dbName ):
             return 
     # run the copy
     note = '"Importing data with O2O execution"'
-    commandOptions = '--force --yes --db %s copy %s %s --destdb %s --synchronize --note %s' %(dbFileName,destTag,destTag,destDb,note)
+    verboseOps = ''
+    if verbose:
+        verboseOps = '-v '
+    globalOps = '--force %s--yes --db %s' %(verboseOps,dbFileName) 
+    commandOptions = '%s copy %s %s --destdb %s --synchronize --note %s' %(globalOps,destTag,destTag,destDb,note)
     copyCommand = 'conddb %s' %commandOptions
     logger.info( 'Executing command: %s' %copyCommand )
     try:

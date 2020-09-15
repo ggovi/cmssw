@@ -347,7 +347,9 @@ void popcon::EcalLaserHandler::getNewObjects() {
         delete apdpns_popcon;
       }
       if ((!iseq->second.empty()) && (!m_fake)) {
-        m_to_transfer.push_back(std::make_pair(apdpns_popcon, Tm(t_last).cmsNanoSeconds()));
+        auto since_t = Tm(t_last).cmsNanoSeconds();
+        if (since_t > max_since)
+          m_to_transfer.push_back(std::make_pair(apdpns_popcon, since_t));
       }
     } else {
       // Here we should put a warning

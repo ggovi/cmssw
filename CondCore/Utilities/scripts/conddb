@@ -716,6 +716,13 @@ def _get_last_frozen_since( session, tagName, fcsr=None ):
     logging.debug('Last frozen since in destination tag is %s' %res)
     return res
 
+def _get_last_frozen_iov( session, tagName, fcsr=None ):
+    IOV = session.get_dbtype(conddb.IOV)
+    last_fsince =  _get_last_frozen_since( session, tagName, fcsr )
+    query = session.query(IOV.since,IOV.payload_hash).filter(IOV.tag_name == tagName ).filter(IOV.since == last_fsince)
+    res = query.first()
+    return res[0],res[1]
+
 class run_to_timestamp( object ):
     def __init__( self, session ):
         self.session = session
@@ -787,6 +794,8 @@ class hlt_synchro_policy( object ):
                     late_iovs.append(since)
         nlate = len(late_iovs)
         if nlate>0:
+            for s_late in late_iovs:
+                logging.debug('IOV with since %s is late.'%s_late)
             logging.warning('%s IOV(s) with since less than the hlt FCSR (%s) have been discarded.' %(nlate,self.fcsr) ) 
         return True, new_iovs
 
@@ -812,6 +821,8 @@ class prompt_synchro_policy( object ):
                     late_iovs.append(since)
         nlate = len(late_iovs)
         if nlate>0:
+            for s_late in late_iovs:
+                logging.debug('IOV with since %s is late.'%s_late)
             logging.warning('%s IOV(s) with since less than the tier0 FCSR (%s) have been discarded.' %(nlate,self.fcsr) ) 
         return True, new_iovs
 
@@ -819,6 +830,7 @@ class pcl_synchro_policy( object ):
     def __init__(self, session1, session2, timeType, destTag):
         session = conddb.getSessionOnMasterDB( session1, session2 )
         self.fcsr = _get_prompt_fcsr(session, timeType) 
+        self.lastFrozenIov = _get_last_frozen_iov( session2, destTag, self.fcsr ) 
 
     def validate( self, iovs ):
         new_iovs = {}
@@ -831,8 +843,13 @@ class pcl_synchro_policy( object ):
                 late_iovs.append(since)
         nlate = len(late_iovs)
         if nlate>0:
+            for s_late in late_iovs:
+                logging.debug('IOV with since %s is late.'%s_late)
             logging.error('%s IOV(s) with since less than the tier0 FCSR (%s) have been discarded.' %(nlate,self.fcsr) ) 
             ret = False
+        if len(new_iovs)==0:
+            logging.debug('Adding iov with last frozen since=%s (payload=%s)'%(self.fcsr,self.lastFrozenIov[1]))
+            new_iovs[self.fcsr]=self.lastFrozenIov[1]
         return ret, new_iovs
 
 class mc_synchro_policy( object ):
@@ -1214,7 +1231,7 @@ def _copy_payload( args, copyTime, session1, session2, payloadHash, payloadSeria
     if _exists(session2, Payload2.hash, payloadHash):
         logging.debug('Skipping copy of payload %s to %s since it already exists...', str_db_object(args.db, payloadHash), str_db_object(args.destdb, payloadHash))
         if payloadSerializationVersionMap is not None:
-            q = session1.query(Payload1.streamer_info).filter(Payload1.hash == payloadHash).one()
+            q = session2.query(Payload2.streamer_info).filter(Payload2.hash == payloadHash).first()
             streamerInfo = str(q[0])
     else:
         logging.info('Copying payload %s to %s ...', str_db_object(args.db, payloadHash), str_db_object(args.destdb, payloadHash))

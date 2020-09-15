@@ -15,6 +15,7 @@ def main( argv ):
     parser.add_argument("job_file", type=str, help="wrapper for popcon jobs")
     parser.add_argument("-d","--destDb", type=str, help="destination database")
     parser.add_argument("-t","--destTag", type=str, help="destination database")
+    parser.add_argument("-v","--verbose", action='store_true', help='Set the verbose mode.')
     parser.add_argument("-a","--auth", type=str,  help="authentication path (for conddb key and .netrc files)")
     parser.add_argument("-x","--comment", type=str, help="user comment for the upload")
     parser.add_argument('--copy', '-c', action='store_true', help='Execute the import with a direct copy.')
