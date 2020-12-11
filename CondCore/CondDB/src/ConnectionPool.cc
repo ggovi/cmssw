@@ -23,6 +23,9 @@ namespace cond {
 
     ConnectionPool::ConnectionPool() {
       m_pluginManager = new cond::CoralServiceManager;
+      m_msgReporter = new CoralMsgReporter;
+      // ownership is acquired ( instrinsically unsafe, need to change coral )
+      coral::MessageStream::installMsgReporter(m_msgReporter);
       configure();
     }
 
@@ -72,11 +75,10 @@ namespace cond {
       coralConfig.disablePoolAutomaticCleanUp();
       coralConfig.disableConnectionSharing();
       // message streaming
+      m_messageLevel = coral::Debug;
       coral::MessageStream::setMsgVerbosity(m_messageLevel);
-      if (m_msgReporter.get() != nullptr) {
-        m_msgReporter->setOutputLevel(m_messageLevel);
-        coral::MessageStream::installMsgReporter(static_cast<coral::IMsgReporter*>(m_msgReporter.get()));
-      }
+      m_msgReporter->setOutputLevel(m_messageLevel);
+
       // authentication
       std::string authServiceName("CORAL/Services/EnvironmentAuthenticationService");
       std::string authPath = m_authPath;
@@ -171,9 +173,7 @@ namespace cond {
 
     void ConnectionPool::setMessageVerbosity(coral::MsgLevel level) { m_messageLevel = level; }
 
-    void ConnectionPool::setLogDestination(Logger& logger) {
-      m_msgReporter = std::make_unique<CoralMsgReporter>(logger);
-    }
+    void ConnectionPool::setLogDestination(Logger& logger) { m_msgReporter->subscribe(logger); }
 
   }  // namespace persistency
 }  // namespace cond
