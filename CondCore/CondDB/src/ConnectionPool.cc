@@ -75,7 +75,6 @@ namespace cond {
       coralConfig.disablePoolAutomaticCleanUp();
       coralConfig.disableConnectionSharing();
       // message streaming
-      m_messageLevel = coral::Debug;
       coral::MessageStream::setMsgVerbosity(m_messageLevel);
       m_msgReporter->setOutputLevel(m_messageLevel);
 
